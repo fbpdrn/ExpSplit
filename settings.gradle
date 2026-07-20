@@ -1,1 +1,5 @@
 rootProject.name = 'ExpSplit'
+
+include 'gateway'
+include 'auth'
+include 'expsplit'
