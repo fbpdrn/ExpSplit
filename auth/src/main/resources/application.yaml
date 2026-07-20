@@ -4,3 +4,17 @@ server:
 spring:
   application:
     name: auth
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/expsplit}
+    username: ${DB_USERNAME:expsplit_auth}
+    password: ${DB_PASSWORD:expsplit_auth}
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    open-in-view: false
+
+jwt:
+  issuer: expsplit-auth
+  expiration: PT1H
+  key-store-path: ${JWT_KEY_STORE_PATH:./data/jwt-signing-key.json}

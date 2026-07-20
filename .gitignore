@@ -42,3 +42,6 @@ build/
 .idea/
 .junie/
 *.iml
+
+### Secrets ###
+**/data/
