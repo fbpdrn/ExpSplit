@@ -7,9 +7,14 @@ public record UserAuthEmail(String email) {
     private static final Pattern EMAIL_PATTERN = Pattern.compile("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$");
 
     public UserAuthEmail {
-        if (email == null || !EMAIL_PATTERN.matcher(email).matches()) {
+        if (email == null) {
+            throw new IllegalArgumentException("Invalid email format: null");
+        }
+
+        email = email.trim().toLowerCase();
+
+        if (!EMAIL_PATTERN.matcher(email).matches()) {
             throw new IllegalArgumentException("Invalid email format: " + email);
         }
-        email = email.trim().toLowerCase();
     }
 }
