@@ -4,3 +4,7 @@ server:
 spring:
   application:
     name: gateway
+
+gateway:
+  upstream:
+    auth-url: ${AUTH_SERVICE_URL:http://localhost:8081}
