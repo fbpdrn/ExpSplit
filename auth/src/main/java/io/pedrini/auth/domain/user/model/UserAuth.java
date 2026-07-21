@@ -5,7 +5,7 @@ import java.time.Instant;
 
 public class UserAuth {
 
-    protected static final int MAX_FAILED_ATTEMPTS = 5;
+    public static final int MAX_FAILED_ATTEMPTS = 5;
     protected static final Duration LOCK_DURATION = Duration.ofMinutes(15);
 
     private final UserAuthId id;
