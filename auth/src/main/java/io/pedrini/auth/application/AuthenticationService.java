@@ -39,6 +39,6 @@ public class AuthenticationService implements AuthenticateUserUseCase {
         userAuth.loginSuccessful();
         userAuthRepository.save(userAuth);
 
-        return tokenIssuer.issue(userAuth.id());
+        return tokenIssuer.issue(userAuth.id(), userAuth.email());
     }
 }

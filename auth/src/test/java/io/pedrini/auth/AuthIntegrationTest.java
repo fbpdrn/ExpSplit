@@ -95,6 +95,7 @@ class AuthIntegrationTest {
         assertThat(parts).hasSize(3);
         String payloadJson = new String(Base64.getUrlDecoder().decode(parts[1]));
         assertThat(payloadJson).contains(userAuth.id().id().toString());
+        assertThat(payloadJson).contains(userAuth.email().email());
     }
 
     @Test

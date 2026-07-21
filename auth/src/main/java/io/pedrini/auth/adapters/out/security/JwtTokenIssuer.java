@@ -1,6 +1,7 @@
 package io.pedrini.auth.adapters.out.security;
 
 import io.jsonwebtoken.Jwts;
+import io.pedrini.auth.domain.user.model.UserAuthEmail;
 import io.pedrini.auth.domain.user.model.UserAuthId;
 import io.pedrini.auth.domain.user.port.out.TokenIssuer;
 import io.pedrini.auth.infrastructure.security.JwtKeyConfig;
@@ -14,6 +15,9 @@ import java.util.Date;
 @Component
 class JwtTokenIssuer implements TokenIssuer {
 
+    private static final String HEADER_KEY_ID = "kid";
+    private static final String CLAIM_EMAIL = "email";
+
     private final JwtProperties properties;
     private final KeyPair keyPair;
 
@@ -23,11 +27,12 @@ class JwtTokenIssuer implements TokenIssuer {
     }
 
     @Override
-    public String issue(UserAuthId userId) {
+    public String issue(UserAuthId userId, UserAuthEmail email) {
         Instant now = Instant.now();
         return Jwts.builder()
-                .header().add("kid", JwtKeyConfig.KEY_ID).and()
+                .header().add(HEADER_KEY_ID, JwtKeyConfig.KEY_ID).and()
                 .subject(userId.id().toString())
+                .claim(CLAIM_EMAIL, email.email())
                 .issuer(properties.issuer())
                 .issuedAt(Date.from(now))
                 .expiration(Date.from(now.plus(properties.expiration())))
