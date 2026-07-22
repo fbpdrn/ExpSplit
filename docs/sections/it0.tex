@@ -1,0 +1,110 @@
+% Iterazione 0
+\section{Iterazione 0}
+
+\subsection{Introduzione}
+\emph{ExpSplit} è un servizio progettato per semplificare la gestione delle spese condivise tra gruppi di utenti. Il sistema permette il tracciamento e la divisione automatica e trasparente delle spese in contesti di gruppo.
+
+Il servizio consente quindi di:
+\begin{itemize}
+    \item Creare e gestire gruppi privati di spesa;
+    \item Registrare spese condivise e rimborsi;
+    \item Calcolare automaticamente la ripartizione delle spese;
+    \item Fornire statistiche e un riepilogo delle spese del gruppo.
+\end{itemize}
+
+\subsection{Requisiti}
+Il servizio deve soddisfare i seguenti requisiti funzionali e non funzionali:
+
+\subsubsection{Requisiti Funzionali (RF)}
+\begin{itemize}
+    \item \textbf{Gestione utente:} il servizio deve permettere a un utente di registrarsi e autenticarsi. La gestione utente deve quindi includere la possibilità di modificare le proprie informazioni personali e di accesso;
+    \item \textbf{Gestione gruppo:} è necessario un meccanismo di creazione di un nuovo gruppo o di accesso a uno preesistente con relativi permessi;
+    \item \textbf{Registro transazioni:} ogni utente all'interno di un gruppo deve avere la possibilità di creare, visualizzare e modificare le transazioni legate a spese o rimborsi tra i membri del gruppo;
+    \item \textbf{Bilanci:} il servizio deve prevedere la possibilità di mostrare un bilancio sempre aggiornato per gruppo e per utente sulla base del registro transazioni;
+    \item \textbf{Statistiche:} le transazioni possono essere categorizzate e tra diversi utenti in un gruppo. Si vuole prevedere un meccanismo di generazione delle statistiche sulla base dei dati a disposizione.
+\end{itemize}
+
+\subsubsection{Requisiti Non Funzionali (RNF)}
+\begin{itemize}
+    \item \textbf{Sicurezza:} tutte le funzionalità, le risorse salvate e i vincoli di accesso devono essere rispettati e protetti;
+    \item \textbf{Efficienza:} il servizio deve poter gestire molteplici aggiornamenti dei dati senza subire rallentamenti o blocchi;
+    \item \textbf{Modularità:} il servizio deve essere progettato per l'aggiunta o rimozione di elementi che permettono di estendere o adattare le funzioni principali; 
+    \item \textbf{Scalabilità:} il servizio deve essere configurato per un contesto variabile su più sistemi indipendenti.
+\end{itemize}
+
+\subsection{Casi d'uso}
+I casi d'uso sono riportati di seguito:
+
+\begin{itemize}
+    \item \textbf{UC1 - Autenticazione}
+    \begin{itemize}
+        \item \textbf{UC1.1 - Registrazione:} un utente può creare un account;
+        \item \textbf{UC1.2 - Autenticazione:} un utente registrato può eseguire l'accesso alle funzioni del servizio.
+    \end{itemize}
+    \item \textbf{UC2 - Utente}
+    \begin{itemize}
+        \item \textbf{UC2.1 - Modifica:} un utente può inserire informazioni personali e aggiuntive;
+        \item \textbf{UC2.2 - Eliminazione:} un utente può decidere di eliminare permanentemente il proprio profilo.
+    \end{itemize}
+    \item \textbf{UC3 - Gestione gruppo}
+    \begin{itemize}
+        \item \textbf{UC3.1 - Creazione:} un utente può creare un gruppo di spesa;
+        \item \textbf{UC3.2 - Invito:} un utente può invitare un altro utente in un gruppo. L'invito può essere accettato o rifiutato;
+        \item \textbf{UC3.3 - Abbandono:} un utente può uscire da un gruppo;
+        \item \textbf{UC3.4 - Eliminazione:} un utente può eliminare un gruppo.
+    \end{itemize}
+    \item \textbf{UC4 - Transazioni}
+    \begin{itemize}
+        \item \textbf{UC4.1 - Creazione}: un utente può creare transazioni di diverso tipo con ripartizione della spesa personalizzata tra gli utenti dello stesso gruppo;
+        \item \textbf{UC4.2 - Modifica:} un utente può modificare una transazione creata in precedenza all'interno di un gruppo;
+        \item \textbf{UC4.3 - Cancellazione:} un utente può eliminare definitivamente una transazione creata in precedenza all'interno di un gruppo;
+    \end{itemize}
+    \item \textbf{UC5 - Bilanci}
+        \begin{itemize}
+            \item \textbf{UC5.1 - Aggiornamento:} un utente può richiedere un bilancio sempre aggiornato rispetto al registro delle transazioni di un gruppo;
+            \item \textbf{UC5.2 - Dettaglio:} un utente può richiedere un bilancio dettagliato per le transazioni associate al suo profilo verso il gruppo o verso altri utenti nel gruppo;
+            \item \textbf{UC5.3 - Statistiche:} un utente può richiedere informazioni aggregate sulla base delle informazioni addizionali disponibili nelle transazioni.
+        \end{itemize}
+\end{itemize}
+
+\subsection{Architettura}
+L'architettura di \emph{ExpSplit} è basata sul pattern \textbf{esagonale} (\emph{ports and adapters}), applicato a livello di singolo servizio, e su una scomposizione a microservizi a livello di sistema.
+
+\subsubsection{Architettura esagonale}
+Ogni servizio è strutturato secondo il pattern esagonale (\emph{ports and adapters}), con l'obiettivo di isolare la logica applicativa dai dettagli tecnologici e infrastrutturali. Si distinguono i seguenti elementi:
+
+\begin{itemize}
+    \item \textbf{Domain:} contiene le entità e le regole di business, indipendenti da qualsiasi tecnologia o framework;
+    \item \textbf{Casi d'uso:} implementano le funzionalità del sistema descritte in precedenza;
+    \item \textbf{Porte:} interfacce (in ingresso e uscita) che definiscono i punti di scambio tra l'applicazione e il mondo esterno;
+    \item \textbf{Adapter:} implementazioni concrete che collegano l'applicazione a tecnologie specifiche.
+\end{itemize}
+
+Grazie a questa scelta, gli \emph{adapter} possono essere sostituiti o aggiunti senza modificare il \emph{domain} e i \emph{casi d'uso}.
+
+\subsubsection{Architettura a microservizi}
+A livello di sistema, \emph{ExpSplit} è organizzato secondo un'architettura a \textbf{microservizi}, ciascuno progettato internamente secondo il pattern esagonale descritto sopra. I servizi individuati sono i seguenti:
+
+\begin{itemize}
+    \item \textbf{Gateway:} punto di accesso unico al sistema, responsabile dell'instradamento delle richieste verso i servizi interni;
+    \item \textbf{Auth:} servizio dedicato alla gestione dell'autenticazione e delle credenziali degli utenti;
+    \item \textbf{ExpSplit:} servizio contenente la logica di dominio del sistema (gruppi, transazioni, bilanci, statistiche), corrispondente ai requisiti funzionali descritti in precedenza.
+\end{itemize}
+
+Questa scomposizione favorisce la \emph{scalabilità} orizzontale dei singoli servizi in modo indipendente e la loro evoluzione autonoma, in linea con i requisiti non funzionali individuati.
+
+\subsection{Toolchain e tecnologie}
+Per lo sviluppo si prevede l'utilizzo dei seguenti strumenti e tecnologie:
+\begin{itemize}
+    \item \textbf{IDE:} IntelliJ IDEA Ultimate per lo sviluppo del sistema e XCode per l'applicazione mobile.
+    \item \textbf{Backend:} Spring Boot con i moduli \texttt{Web}, \texttt{Security} e ulteriori dipendenze per l'implementazione della sicurezza e dell'autenticazione.
+    \item \textbf{Build tool:} Gradle per la gestione delle dipendenze e del ciclo di build.
+    \item \textbf{Database:} PostgreSQL per la persistenza dei dati.
+    \item \textbf{Database per i test:} H2 in-memory, per eseguire test unitari e di integrazione senza dipendere dal database di produzione.
+    \item \textbf{Testing unitario:} JUnit per la verifica dei singoli componenti.
+    \item \textbf{Testing di integrazione:} MockMvc combinato con JUnit per testare i flussi tra controller, servizi e layer di persistenza.
+    \item \textbf{Frontend:} Applicazione demo sviluppata in Swift e SwiftUI.
+    \item \textbf{Strumenti di test API:} Postman / curl.
+    \item \textbf{Versionamento:} Git + GitHub per il controllo della versione del codice sorgente.
+    \item \textbf{Deployment/Container:} Docker per creare ambienti coerenti tra sviluppo e produzione, e Docker Compose per orchestrare i microservizi (gateway, auth, expsplit) insieme al database in ambiente locale.
+\end{itemize}
