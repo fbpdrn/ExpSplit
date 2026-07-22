@@ -1,0 +1,26 @@
+sequenceDiagram
+    actor U as Utente
+    participant G as Gateway
+    participant A as Auth
+    participant DB as PostgreSQL
+
+    U->>G: POST /auth/login (email, password)
+    G->>A: inoltro richiesta
+    A->>DB: findByEmail(email)
+    DB-->>A: UserAuth
+
+    alt profilo bloccato o disabilitato
+        A-->>G: 403 Forbidden
+        G-->>U: 403 Forbidden
+    else credenziali non corrispondenti
+        A->>A: loginFailed() (incrementa contatore, blocca se soglia superata)
+        A->>DB: save(UserAuth)
+        A-->>G: 401 Unauthorized
+        G-->>U: 401 Unauthorized
+    else credenziali corrette
+        A->>A: loginSuccessful() (azzera contatore)
+        A->>A: issue(userId, email) -> JWT firmato RS256
+        A->>DB: save(UserAuth)
+        A-->>G: 200 OK + token
+        G-->>U: 200 OK + token
+    end

@@ -1,0 +1,91 @@
+% Iterazione 1
+\section{Iterazione 1}
+
+\subsection{Introduzione}
+L'iterazione 1 ha l'obiettivo di realizzare il servizio di \textbf{autenticazione} e di \textbf{gateway}, definendo in modo dettagliato le scelte implementative e il modello di \emph{deployment} previsto del sistema.
+
+\subsection{Deployment}
+Il sistema è composto da tre servizi indipendenti (\emph{Gateway}, \emph{Auth}, \emph{ExpSplit}).
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.85\textwidth]{deployment-it1.png}
+    \caption{Deployment}
+    \label{fig:deployment}
+\end{figure}
+
+La configurazione è impostabile tramite variabili d'ambiente. I servizi possono condividere un unico database e mantenere la separazione delle funzioni con i giusti accorgimenti sui ruoli e permessi delle tabelle. Questa parte verrà meglio definita con il servizio \emph{ExpSplit}.
+
+Ogni servizio può essere containerizzato ed eseguito in modo indipendente.
+
+\subsection{Architettura del servizio di autenticazione}
+Il servizio \emph{Auth} segue il pattern esagonale applicato all'unico elemento che lo caratterizza: \texttt{UserAuth} (identità di accesso).
+
+\begin{itemize}
+    \item \textbf{Dominio:} \texttt{UserAuth} (email, password con relativo algoritmo, stato \texttt{ACTIVE}/\texttt{LOCKED}/\texttt{DISABLED}) incapsula il blocco temporaneo dopo tentativi falliti ripetuti;
+    \item \textbf{Casi d'uso:} \texttt{RegistrationService} e \texttt{AuthenticationService} implementano le porte in ingresso, dipendendo solo da porte in uscita;
+    \item \textbf{Adapter in ingresso:} \texttt{AuthController} espone \texttt{/auth/register} e \texttt{/auth/login}; un \emph{exception handler} centralizzato traduce le eccezioni di dominio in risposte HTTP;
+    \item \textbf{Adapter in uscita:} persistenza JPA, hashing Argon2id delle password ed emissione di token JWT.
+\end{itemize}
+
+I token sono JWT firmati con RS256: la coppia di chiavi è generata e salvata al primo avvio e pubblicata secondo lo standard JWK Set (\texttt{/.well-known/jwks.json}). La chiave pubblica esposta agli altri servizi permette di non dover dipendere dal servizio \emph{Auth} per la verifica del token.
+
+La figura di seguito mostra il flusso di accesso da parte di un utente:
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.85\textwidth]{login-sequence.png}
+    \caption{Sequenza di autenticazione (UC1.2)}
+    \label{fig:login-sequence}
+\end{figure}
+
+La sessione è \emph{stateless}. Sono pubblici solo registrazione, login e JWKS; la verifica dei token è compito del servizio \emph{ExpSplit}.
+
+\subsection{Architettura del servizio di gateway}
+Il \emph{Gateway} è l'unico punto di accesso esterno al sistema e svolge il ruolo di \emph{reverse proxy} senza avere quindi particolari elementi che lo caratterizzano oltre alla sua funzione. Tutte le richieste verso \texttt{/auth/**} sono per il servizio \emph{Auth} mentre le restanti per il servizio \emph{ExpSplit}.
+
+\subsection{Casi d'uso}
+In questa iterazione viene realizzato esclusivamente \textbf{UC1 - Autenticazione}:
+
+\subsubsection{UC1.1 - Registrazione}
+\begin{itemize}
+    \item \textbf{Attori:} Utente non registrato;
+    \item \textbf{Descrizione:} un utente fornisce un indirizzo email e una password per creare un nuovo profilo di autenticazione nel sistema;
+    \item \textbf{Precondizioni:} l'indirizzo email fornito non deve essere già associato a un profilo esistente;
+    \item \textbf{Postcondizioni:} viene creato un nuovo profilo utente in stato \texttt{ACTIVE}, con la password memorizzata (cifrata), e viene restituito l'identificativo univoco del profilo creato;
+    \item \textbf{Flusso degli eventi principale:}
+    \begin{enumerate}
+        \item l'utente invia una richiesta di registrazione (email, password) all'endpoint \texttt{POST /auth/register};
+        \item il servizio valida i dati ricevuti (email non vuota, password tra 8 e 128 caratteri);
+        \item il servizio verifica l'unicità dell'e-mail;
+        \item la password viene cifrata con l'algoritmo Argon2id;
+        \item viene creato e salvato un nuovo profilo utente (\texttt{ACTIVE});
+    \end{enumerate}
+    \item \textbf{Flussi alternativi:}
+    \begin{itemize}
+        \item \emph{Email già registrata:} l'operazione viene interrotta e viene restituito un errore (\texttt{409 Conflict});
+        \item \emph{Dati non validi:} email vuota o password fuori dai vincoli di lunghezza comportano un errore di validazione (\texttt{400 Bad Request}).
+    \end{itemize}
+\end{itemize}
+
+\subsubsection{UC1.2 - Autenticazione}
+\begin{itemize}
+    \item \textbf{Attori:} Utente registrato;
+    \item \textbf{Descrizione:} un utente registrato fornisce le proprie credenziali per ottenere un token di accesso da utilizzare nelle richieste successive verso il sistema;
+    \item \textbf{Precondizioni:} l'utente deve possedere un profilo esistente, non bloccato o disabilitato;
+    \item \textbf{Postcondizioni:} in caso di successo viene restituito un token firmato, valido per un periodo limitato, e il contatore dei tentativi falliti viene azzerato; in caso di fallimento il contatore dei tentativi falliti viene incrementato;
+    \item \textbf{Flusso degli eventi principale:}
+    \begin{enumerate}
+        \item l'utente invia una richiesta di autenticazione (email, password) all'endpoint \texttt{POST /auth/login};
+        \item il servizio recupera il profilo associato all'email fornita;
+        \item il servizio verifica che il profilo non sia bloccato;
+        \item il servizio verifica la corrispondenza tra la password fornita e quella memorizzata;
+        \item in caso di corrispondenza, il contatore dei tentativi falliti viene azzerato e viene generato un token;
+        \item il token viene restituito all'utente.
+    \end{enumerate}
+    \item \textbf{Flussi alternativi:}
+    \begin{itemize}
+        \item \emph{Credenziali non valide:} il contatore dei tentativi falliti viene incrementato; superata la soglia di tentativi consentiti il profilo viene bloccato temporaneamente; il sistema restituisce un errore (\texttt{401 Unauthorized});
+        \item \emph{Profilo bloccato o disabilitato:} la richiesta viene rifiutata senza verificare la password, restituendo un errore (\texttt{403 Forbidden}).
+    \end{itemize}
+\end{itemize}
+

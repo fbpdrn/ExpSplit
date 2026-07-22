@@ -1,0 +1,11 @@
+flowchart TB
+    C["Client"]
+
+    C -->|"HTTP/HTTPS"| GW["Gateway :8080"]
+
+    GW -->|"/auth/**"| AUTH["Auth :8081"]
+    GW -.->|"/**/**"| EXP["ExpSplit :8082"]
+
+    AUTH --> DB[("PostgreSQL :5432")]
+
+    style EXP stroke-dasharray: 5 5
