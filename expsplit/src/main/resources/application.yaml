@@ -4,3 +4,7 @@ server:
 spring:
   application:
     name: expsplit
+
+jwt:
+  issuer: expsplit-auth
+  jwks-uri: ${AUTH_JWKS_URI:http://localhost:8081/.well-known/jwks.json}

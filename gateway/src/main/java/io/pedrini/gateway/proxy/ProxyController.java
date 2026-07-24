@@ -14,7 +14,7 @@ import java.util.Enumeration;
 import java.util.Set;
 
 @RestController
-class AuthProxyController {
+class ProxyController {
 
     private static final Set<String> EXCLUDED_REQUEST_HEADERS = Set.of("host", "content-length", "connection");
     private static final Set<String> EXCLUDED_RESPONSE_HEADERS = Set.of("transfer-encoding", "content-length", "connection");
@@ -22,16 +22,25 @@ class AuthProxyController {
     private final RestClient restClient = RestClient.create();
     private final GatewayProperties properties;
 
-    AuthProxyController(GatewayProperties properties) {
+    ProxyController(GatewayProperties properties) {
         this.properties = properties;
     }
 
     @RequestMapping("/auth/**")
-    ResponseEntity<byte[]> forward(HttpServletRequest request, @RequestBody(required = false) byte[] body) {
+    ResponseEntity<byte[]> forwardToAuth(HttpServletRequest request, @RequestBody(required = false) byte[] body) {
+        return forward(request, body, properties.authUrl());
+    }
+
+    @RequestMapping("/**")
+    ResponseEntity<byte[]> forwardToExpSplit(HttpServletRequest request, @RequestBody(required = false) byte[] body) {
+        return forward(request, body, properties.expsplitUrl());
+    }
+
+    private ResponseEntity<byte[]> forward(HttpServletRequest request, byte[] body, String upstreamBaseUrl) {
 
         // Si crea l'url con i parametri della query string se presenti
         String queryString = request.getQueryString();
-        String targetUrl = properties.authUrl() + request.getRequestURI() + (queryString != null ? "?" + queryString : "");
+        String targetUrl = upstreamBaseUrl + request.getRequestURI() + (queryString != null ? "?" + queryString : "");
 
         // Si preparano gli headers da inoltrare, rimuovendo quelli che non devono essere inoltrati:
         // * host: header hop-by-hop riferito al gateway

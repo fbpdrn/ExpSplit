@@ -8,3 +8,4 @@ spring:
 gateway:
   upstream:
     auth-url: ${AUTH_SERVICE_URL:http://localhost:8081}
+    expsplit-url: ${EXPSPLIT_SERVICE_URL:http://localhost:8082}
