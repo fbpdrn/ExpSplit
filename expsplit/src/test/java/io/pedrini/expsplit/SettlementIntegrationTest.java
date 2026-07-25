@@ -123,7 +123,26 @@ class SettlementIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.payerId").value(memberId.toString()))
                 .andExpect(jsonPath("$.payeeId").value(ownerId.toString()))
-                .andExpect(jsonPath("$.amount").value(20.00));
+                .andExpect(jsonPath("$.amount").value(20.00))
+                .andExpect(jsonPath("$.category").value("OTHER"));
+    }
+
+    @Test
+    void createSettlementWithExplicitCategory() throws Exception {
+        UUID ownerId = UUID.randomUUID();
+        UUID memberId = UUID.randomUUID();
+        createProfile(ownerId);
+        UUID groupId = createGroup(ownerId);
+        addAcceptedMember(groupId, ownerId, memberId);
+
+        String body = "{\"payeeId\":\"" + ownerId + "\",\"amount\":20,\"category\":\"FOOD\"}";
+
+        mockMvc.perform(post("/groups/" + groupId + "/settlements")
+                        .with(authenticatedAs(memberId))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.category").value("FOOD"));
     }
 
     @Test

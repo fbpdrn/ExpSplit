@@ -50,7 +50,7 @@ public class SettlementController {
     public ResponseEntity<SettlementResponse> create(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID groupId,
                                                        @Valid @RequestBody CreateSettlementRequest request) {
         Settlement settlement = createSettlementUseCase.create(
-                new GroupId(groupId), userId(jwt), new UserProfileId(request.payeeId()), new Amount(request.amount()));
+                new GroupId(groupId), userId(jwt), new UserProfileId(request.payeeId()), new Amount(request.amount()), request.category());
         return ResponseEntity.ok(SettlementResponse.from(settlement));
     }
 

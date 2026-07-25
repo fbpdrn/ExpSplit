@@ -18,29 +18,37 @@ public class Transaction {
     private final UserProfileId paidBy;
     private TransactionDescription description;
     private Amount amount;
+    private Category category;
     private List<TransactionShare> shares;
     private final Instant createdAt;
 
     public Transaction(TransactionId id, GroupId groupId, UserProfileId paidBy, TransactionDescription description,
-                        Amount amount, List<TransactionShare> shares, Instant createdAt) {
+                        Amount amount, Category category, List<TransactionShare> shares, Instant createdAt) {
         this.id = id;
         this.groupId = groupId;
         this.paidBy = paidBy;
         this.description = description;
         this.amount = amount;
+        this.category = category;
         this.shares = new ArrayList<>(shares);
         this.createdAt = createdAt;
     }
 
     public static Transaction create(TransactionId id, GroupId groupId, UserProfileId paidBy,
-                                      TransactionDescription description, Amount amount, List<TransactionShare> shares) {
-        return new Transaction(id, groupId, paidBy, description, amount, normalizeShares(shares), Instant.now());
+                                      TransactionDescription description, Amount amount, Category category,
+                                      List<TransactionShare> shares) {
+        return new Transaction(id, groupId, paidBy, description, amount, orDefault(category), normalizeShares(shares), Instant.now());
     }
 
-    public void update(TransactionDescription description, Amount amount, List<TransactionShare> shares) {
+    public void update(TransactionDescription description, Amount amount, Category category, List<TransactionShare> shares) {
         this.description = description;
         this.amount = amount;
+        this.category = orDefault(category);
         this.shares = new ArrayList<>(normalizeShares(shares));
+    }
+
+    private static Category orDefault(Category category) {
+        return category != null ? category : Category.OTHER;
     }
 
     public void requireModifiable(UserProfileId requesterId, boolean requesterIsGroupOwner) {
@@ -96,6 +104,7 @@ public class Transaction {
     public UserProfileId paidBy() { return paidBy; }
     public TransactionDescription description() { return description; }
     public Amount amount() { return amount; }
+    public Category category() { return category; }
     public List<TransactionShare> shares() { return List.copyOf(shares); }
     public Instant createdAt() { return createdAt; }
 }

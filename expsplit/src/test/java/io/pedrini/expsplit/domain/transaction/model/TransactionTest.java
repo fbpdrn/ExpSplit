@@ -29,15 +29,41 @@ class TransactionTest {
     void createSucceedsWhenSharesSumToHundred() {
         List<TransactionShare> shares = List.of(share(PAYER, "50"), share(OTHER_MEMBER, "50"));
 
-        Transaction transaction = Transaction.create(TransactionId.generate(), GROUP_ID, PAYER, DESCRIPTION, AMOUNT, shares);
+        Transaction transaction = Transaction.create(TransactionId.generate(), GROUP_ID, PAYER, DESCRIPTION, AMOUNT, null, shares);
 
         assertThat(transaction.shares()).hasSize(2);
         assertThat(transaction.paidBy()).isEqualTo(PAYER);
     }
 
     @Test
+    void createWithoutCategoryDefaultsToOther() {
+        Transaction transaction = Transaction.create(
+                TransactionId.generate(), GROUP_ID, PAYER, DESCRIPTION, AMOUNT, null, List.of(share(PAYER, "100")));
+
+        assertThat(transaction.category()).isEqualTo(Category.OTHER);
+    }
+
+    @Test
+    void createWithExplicitCategoryKeepsIt() {
+        Transaction transaction = Transaction.create(
+                TransactionId.generate(), GROUP_ID, PAYER, DESCRIPTION, AMOUNT, Category.TRANSPORT, List.of(share(PAYER, "100")));
+
+        assertThat(transaction.category()).isEqualTo(Category.TRANSPORT);
+    }
+
+    @Test
+    void updateWithoutCategoryDefaultsToOther() {
+        Transaction transaction = Transaction.create(
+                TransactionId.generate(), GROUP_ID, PAYER, DESCRIPTION, AMOUNT, Category.FOOD, List.of(share(PAYER, "100")));
+
+        transaction.update(DESCRIPTION, AMOUNT, null, List.of(share(PAYER, "100")));
+
+        assertThat(transaction.category()).isEqualTo(Category.OTHER);
+    }
+
+    @Test
     void createEmptySharesException() {
-        assertThatThrownBy(() -> Transaction.create(TransactionId.generate(), GROUP_ID, PAYER, DESCRIPTION, AMOUNT, List.of()))
+        assertThatThrownBy(() -> Transaction.create(TransactionId.generate(), GROUP_ID, PAYER, DESCRIPTION, AMOUNT, null, List.of()))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
@@ -45,7 +71,7 @@ class TransactionTest {
     void createDuplicateShareException() {
         List<TransactionShare> shares = List.of(share(PAYER, "50"), share(PAYER, "50"));
 
-        assertThatThrownBy(() -> Transaction.create(TransactionId.generate(), GROUP_ID, PAYER, DESCRIPTION, AMOUNT, shares))
+        assertThatThrownBy(() -> Transaction.create(TransactionId.generate(), GROUP_ID, PAYER, DESCRIPTION, AMOUNT, null, shares))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
@@ -53,7 +79,7 @@ class TransactionTest {
     void createSharesNotSummingToHundredException() {
         List<TransactionShare> shares = List.of(share(PAYER, "50"), share(OTHER_MEMBER, "30"));
 
-        assertThatThrownBy(() -> Transaction.create(TransactionId.generate(), GROUP_ID, PAYER, DESCRIPTION, AMOUNT, shares))
+        assertThatThrownBy(() -> Transaction.create(TransactionId.generate(), GROUP_ID, PAYER, DESCRIPTION, AMOUNT, null, shares))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
@@ -61,7 +87,7 @@ class TransactionTest {
     void createAbsorbsRoundingDeficitIntoLastShare() {
         List<TransactionShare> shares = List.of(share(PAYER, "33.33"), share(OTHER_MEMBER, "33.33"), share(STRANGER, "33.33"));
 
-        Transaction transaction = Transaction.create(TransactionId.generate(), GROUP_ID, PAYER, DESCRIPTION, AMOUNT, shares);
+        Transaction transaction = Transaction.create(TransactionId.generate(), GROUP_ID, PAYER, DESCRIPTION, AMOUNT, null, shares);
 
         BigDecimal total = transaction.shares().stream()
                 .map(s -> s.percentage().value())
@@ -74,7 +100,7 @@ class TransactionTest {
     void createAbsorbsRoundingSurplusIntoLastShare() {
         List<TransactionShare> shares = List.of(share(PAYER, "33.34"), share(OTHER_MEMBER, "33.34"), share(STRANGER, "33.34"));
 
-        Transaction transaction = Transaction.create(TransactionId.generate(), GROUP_ID, PAYER, DESCRIPTION, AMOUNT, shares);
+        Transaction transaction = Transaction.create(TransactionId.generate(), GROUP_ID, PAYER, DESCRIPTION, AMOUNT, null, shares);
 
         BigDecimal total = transaction.shares().stream()
                 .map(s -> s.percentage().value())
@@ -87,20 +113,20 @@ class TransactionTest {
     void createBeyondToleranceStillThrows() {
         List<TransactionShare> shares = List.of(share(PAYER, "33.33"), share(OTHER_MEMBER, "33.33"), share(STRANGER, "33.00"));
 
-        assertThatThrownBy(() -> Transaction.create(TransactionId.generate(), GROUP_ID, PAYER, DESCRIPTION, AMOUNT, shares))
+        assertThatThrownBy(() -> Transaction.create(TransactionId.generate(), GROUP_ID, PAYER, DESCRIPTION, AMOUNT, null, shares))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test
     void updateReplacesFields() {
         Transaction transaction = Transaction.create(
-                TransactionId.generate(), GROUP_ID, PAYER, DESCRIPTION, AMOUNT, List.of(share(PAYER, "100")));
+                TransactionId.generate(), GROUP_ID, PAYER, DESCRIPTION, AMOUNT, null, List.of(share(PAYER, "100")));
 
         TransactionDescription newDescription = new TransactionDescription("Pranzo");
         Amount newAmount = new Amount(new BigDecimal("60"));
         List<TransactionShare> newShares = List.of(share(PAYER, "40"), share(OTHER_MEMBER, "60"));
 
-        transaction.update(newDescription, newAmount, newShares);
+        transaction.update(newDescription, newAmount, null, newShares);
 
         assertThat(transaction.description()).isEqualTo(newDescription);
         assertThat(transaction.amount()).isEqualTo(newAmount);
@@ -110,7 +136,7 @@ class TransactionTest {
     @Test
     void requireModifiableAllowsPayer() {
         Transaction transaction = Transaction.create(
-                TransactionId.generate(), GROUP_ID, PAYER, DESCRIPTION, AMOUNT, List.of(share(PAYER, "100")));
+                TransactionId.generate(), GROUP_ID, PAYER, DESCRIPTION, AMOUNT, null, List.of(share(PAYER, "100")));
 
         transaction.requireModifiable(PAYER, false);
     }
@@ -118,7 +144,7 @@ class TransactionTest {
     @Test
     void requireModifiableAllowsGroupOwner() {
         Transaction transaction = Transaction.create(
-                TransactionId.generate(), GROUP_ID, PAYER, DESCRIPTION, AMOUNT, List.of(share(PAYER, "100")));
+                TransactionId.generate(), GROUP_ID, PAYER, DESCRIPTION, AMOUNT, null, List.of(share(PAYER, "100")));
 
         transaction.requireModifiable(OTHER_MEMBER, true);
     }
@@ -126,7 +152,7 @@ class TransactionTest {
     @Test
     void requireModifiableRejectsStranger() {
         Transaction transaction = Transaction.create(
-                TransactionId.generate(), GROUP_ID, PAYER, DESCRIPTION, AMOUNT, List.of(share(PAYER, "100")));
+                TransactionId.generate(), GROUP_ID, PAYER, DESCRIPTION, AMOUNT, null, List.of(share(PAYER, "100")));
 
         assertThatThrownBy(() -> transaction.requireModifiable(STRANGER, false))
                 .isInstanceOf(TransactionPermissionException.class);

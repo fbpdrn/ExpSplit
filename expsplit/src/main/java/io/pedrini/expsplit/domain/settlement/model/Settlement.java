@@ -3,6 +3,7 @@ package io.pedrini.expsplit.domain.settlement.model;
 import io.pedrini.expsplit.domain.group.model.GroupId;
 import io.pedrini.expsplit.domain.settlement.exception.SettlementPermissionException;
 import io.pedrini.expsplit.domain.transaction.model.Amount;
+import io.pedrini.expsplit.domain.transaction.model.Category;
 import io.pedrini.expsplit.domain.user.model.UserProfileId;
 
 import java.time.Instant;
@@ -14,23 +15,27 @@ public class Settlement {
     private final UserProfileId payerId;
     private final UserProfileId payeeId;
     private final Amount amount;
+    private final Category category;
     private final Instant createdAt;
 
     public Settlement(SettlementId id, GroupId groupId, UserProfileId payerId, UserProfileId payeeId,
-                       Amount amount, Instant createdAt) {
+                       Amount amount, Category category, Instant createdAt) {
         this.id = id;
         this.groupId = groupId;
         this.payerId = payerId;
         this.payeeId = payeeId;
         this.amount = amount;
+        this.category = category;
         this.createdAt = createdAt;
     }
 
-    public static Settlement create(SettlementId id, GroupId groupId, UserProfileId payerId, UserProfileId payeeId, Amount amount) {
+    public static Settlement create(SettlementId id, GroupId groupId, UserProfileId payerId, UserProfileId payeeId,
+                                     Amount amount, Category category) {
         if (payerId.equals(payeeId)) {
             throw new IllegalArgumentException("A settlement cannot be paid to oneself");
         }
-        return new Settlement(id, groupId, payerId, payeeId, amount, Instant.now());
+        Category resolvedCategory = category != null ? category : Category.OTHER;
+        return new Settlement(id, groupId, payerId, payeeId, amount, resolvedCategory, Instant.now());
     }
 
     public void requireDeletable(UserProfileId requesterId, boolean requesterIsGroupOwner) {
@@ -44,5 +49,6 @@ public class Settlement {
     public UserProfileId payerId() { return payerId; }
     public UserProfileId payeeId() { return payeeId; }
     public Amount amount() { return amount; }
+    public Category category() { return category; }
     public Instant createdAt() { return createdAt; }
 }

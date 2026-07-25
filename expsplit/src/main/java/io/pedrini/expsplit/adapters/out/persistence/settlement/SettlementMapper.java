@@ -15,6 +15,7 @@ class SettlementMapper {
                 new UserProfileId(entity.getPayerId()),
                 new UserProfileId(entity.getPayeeId()),
                 new Amount(entity.getAmount()),
+                entity.getCategory(),
                 entity.getCreatedAt()
         );
     }
@@ -26,6 +27,7 @@ class SettlementMapper {
                 settlement.payerId().id(),
                 settlement.payeeId().id(),
                 settlement.amount().value(),
+                settlement.category(),
                 settlement.createdAt()
         );
     }

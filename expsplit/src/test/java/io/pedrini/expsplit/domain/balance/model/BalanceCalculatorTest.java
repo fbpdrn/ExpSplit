@@ -4,6 +4,7 @@ import io.pedrini.expsplit.domain.group.model.GroupId;
 import io.pedrini.expsplit.domain.settlement.model.Settlement;
 import io.pedrini.expsplit.domain.settlement.model.SettlementId;
 import io.pedrini.expsplit.domain.transaction.model.Amount;
+import io.pedrini.expsplit.domain.transaction.model.Category;
 import io.pedrini.expsplit.domain.transaction.model.SharePercentage;
 import io.pedrini.expsplit.domain.transaction.model.Transaction;
 import io.pedrini.expsplit.domain.transaction.model.TransactionDescription;
@@ -33,11 +34,11 @@ class BalanceCalculatorTest {
 
     private static Transaction expense(UserProfileId paidBy, String amount, TransactionShare... shares) {
         return new Transaction(TransactionId.generate(), GROUP_ID, paidBy, DESCRIPTION, new Amount(new BigDecimal(amount)),
-                List.of(shares), Instant.now());
+                Category.OTHER, List.of(shares), Instant.now());
     }
 
     private static Settlement settlement(UserProfileId payer, UserProfileId payee, String amount) {
-        return new Settlement(SettlementId.generate(), GROUP_ID, payer, payee, new Amount(new BigDecimal(amount)), Instant.now());
+        return new Settlement(SettlementId.generate(), GROUP_ID, payer, payee, new Amount(new BigDecimal(amount)), Category.OTHER, Instant.now());
     }
 
     @Test

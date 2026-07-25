@@ -27,6 +27,7 @@ class TransactionMapper {
                 new UserProfileId(entity.getPaidBy()),
                 new TransactionDescription(entity.getDescription()),
                 new Amount(entity.getAmount()),
+                entity.getCategory(),
                 shares,
                 entity.getCreatedAt()
         );
@@ -43,6 +44,7 @@ class TransactionMapper {
                 transaction.paidBy().id(),
                 transaction.description().value(),
                 transaction.amount().value(),
+                transaction.category(),
                 shares,
                 transaction.createdAt()
         );

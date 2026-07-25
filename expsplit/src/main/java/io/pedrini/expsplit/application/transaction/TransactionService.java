@@ -7,6 +7,7 @@ import io.pedrini.expsplit.domain.group.model.GroupId;
 import io.pedrini.expsplit.domain.group.port.out.GroupRepository;
 import io.pedrini.expsplit.domain.transaction.exception.TransactionNotFoundException;
 import io.pedrini.expsplit.domain.transaction.model.Amount;
+import io.pedrini.expsplit.domain.transaction.model.Category;
 import io.pedrini.expsplit.domain.transaction.model.Transaction;
 import io.pedrini.expsplit.domain.transaction.model.TransactionDescription;
 import io.pedrini.expsplit.domain.transaction.model.TransactionId;
@@ -34,12 +35,12 @@ public class TransactionService implements CreateTransactionUseCase, GetTransact
 
     @Override
     public Transaction create(GroupId groupId, UserProfileId requesterId, TransactionDescription description,
-                               Amount amount, List<TransactionShare> shares) {
+                               Amount amount, Category category, List<TransactionShare> shares) {
         Group group = loadGroup(groupId);
         requireMember(group, requesterId);
         shares.forEach(share -> requireMember(group, share.userId()));
 
-        Transaction transaction = Transaction.create(TransactionId.generate(), groupId, requesterId, description, amount, shares);
+        Transaction transaction = Transaction.create(TransactionId.generate(), groupId, requesterId, description, amount, category, shares);
         return transactionRepository.save(transaction);
     }
 
@@ -59,13 +60,13 @@ public class TransactionService implements CreateTransactionUseCase, GetTransact
 
     @Override
     public Transaction update(GroupId groupId, TransactionId transactionId, UserProfileId requesterId,
-                               TransactionDescription description, Amount amount, List<TransactionShare> shares) {
+                               TransactionDescription description, Amount amount, Category category, List<TransactionShare> shares) {
         Group group = loadGroup(groupId);
         Transaction transaction = loadTransaction(groupId, transactionId);
         transaction.requireModifiable(requesterId, group.isOwner(requesterId));
         shares.forEach(share -> requireMember(group, share.userId()));
 
-        transaction.update(description, amount, shares);
+        transaction.update(description, amount, category, shares);
         return transactionRepository.save(transaction);
     }
 

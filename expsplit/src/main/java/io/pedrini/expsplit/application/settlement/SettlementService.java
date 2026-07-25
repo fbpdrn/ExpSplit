@@ -14,6 +14,7 @@ import io.pedrini.expsplit.domain.settlement.port.in.GetSettlementUseCase;
 import io.pedrini.expsplit.domain.settlement.port.in.ListSettlementsUseCase;
 import io.pedrini.expsplit.domain.settlement.port.out.SettlementRepository;
 import io.pedrini.expsplit.domain.transaction.model.Amount;
+import io.pedrini.expsplit.domain.transaction.model.Category;
 import io.pedrini.expsplit.domain.user.model.UserProfileId;
 
 import java.util.List;
@@ -29,12 +30,12 @@ public class SettlementService implements CreateSettlementUseCase, GetSettlement
     }
 
     @Override
-    public Settlement create(GroupId groupId, UserProfileId payerId, UserProfileId payeeId, Amount amount) {
+    public Settlement create(GroupId groupId, UserProfileId payerId, UserProfileId payeeId, Amount amount, Category category) {
         Group group = loadGroup(groupId);
         requireMember(group, payerId);
         requireMember(group, payeeId);
 
-        Settlement settlement = Settlement.create(SettlementId.generate(), groupId, payerId, payeeId, amount);
+        Settlement settlement = Settlement.create(SettlementId.generate(), groupId, payerId, payeeId, amount, category);
         return settlementRepository.save(settlement);
     }
 

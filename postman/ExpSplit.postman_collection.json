@@ -514,7 +514,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"description\": \"Pagamento\",\n  \"amount\": 100,\n  \"shares\": [\n    { \"userId\": \"{{ownerId}}\", \"percentage\": 40 },\n    { \"userId\": \"{{memberId}}\", \"percentage\": 60 }\n  ]\n}"
+              "raw": "{\n  \"description\": \"Pagamento\",\n  \"amount\": 100,\n  \"category\": \"FOOD\",\n  \"shares\": [\n    { \"userId\": \"{{ownerId}}\", \"percentage\": 40 },\n    { \"userId\": \"{{memberId}}\", \"percentage\": 60 }\n  ]\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/groups/{{groupId}}/transactions",
@@ -628,7 +628,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"description\": \"Pagamento Aggiornato\",\n  \"amount\": 80,\n  \"shares\": [\n    { \"userId\": \"{{ownerId}}\", \"percentage\": 50 },\n    { \"userId\": \"{{memberId}}\", \"percentage\": 50 }\n  ]\n}"
+              "raw": "{\n  \"description\": \"Pagamento Aggiornato\",\n  \"amount\": 80,\n  \"category\": \"ENTERTAINMENT\",\n  \"shares\": [\n    { \"userId\": \"{{ownerId}}\", \"percentage\": 50 },\n    { \"userId\": \"{{memberId}}\", \"percentage\": 50 }\n  ]\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/groups/{{groupId}}/transactions/{{transactionId}}",
@@ -679,7 +679,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"payeeId\": \"{{ownerId}}\",\n  \"amount\": 20\n}"
+              "raw": "{\n  \"payeeId\": \"{{ownerId}}\",\n  \"amount\": 20,\n  \"category\": \"TRANSPORT\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/groups/{{groupId}}/settlements",

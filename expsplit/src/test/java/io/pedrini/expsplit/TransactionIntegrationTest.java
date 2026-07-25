@@ -136,7 +136,25 @@ class TransactionIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.paidBy").value(ownerId.toString()))
                 .andExpect(jsonPath("$.amount").value(100.00))
+                .andExpect(jsonPath("$.category").value("OTHER"))
                 .andExpect(jsonPath("$.shares.length()").value(2));
+    }
+
+    @Test
+    void createTransactionWithExplicitCategory() throws Exception {
+        UUID ownerId = UUID.randomUUID();
+        createProfile(ownerId);
+        UUID groupId = createGroup(ownerId);
+
+        String body = "{\"description\":\"" + DESCRIPTION + "\",\"amount\":50,\"category\":\"TRANSPORT\","
+                + "\"shares\":[{\"userId\":\"" + ownerId + "\",\"percentage\":100}]}";
+
+        mockMvc.perform(post("/groups/" + groupId + "/transactions")
+                        .with(authenticatedAs(ownerId))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.category").value("TRANSPORT"));
     }
 
     @Test

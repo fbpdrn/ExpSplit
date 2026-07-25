@@ -3,6 +3,7 @@ package io.pedrini.expsplit.domain.settlement.model;
 import io.pedrini.expsplit.domain.group.model.GroupId;
 import io.pedrini.expsplit.domain.settlement.exception.SettlementPermissionException;
 import io.pedrini.expsplit.domain.transaction.model.Amount;
+import io.pedrini.expsplit.domain.transaction.model.Category;
 import io.pedrini.expsplit.domain.user.model.UserProfileId;
 import org.junit.jupiter.api.Test;
 
@@ -22,7 +23,7 @@ class SettlementTest {
 
     @Test
     void createSucceeds() {
-        Settlement settlement = Settlement.create(SettlementId.generate(), GROUP_ID, PAYER, PAYEE, AMOUNT);
+        Settlement settlement = Settlement.create(SettlementId.generate(), GROUP_ID, PAYER, PAYEE, AMOUNT, null);
 
         assertThat(settlement.payerId()).isEqualTo(PAYER);
         assertThat(settlement.payeeId()).isEqualTo(PAYEE);
@@ -31,27 +32,41 @@ class SettlementTest {
 
     @Test
     void createSamePayerAndPayeeException() {
-        assertThatThrownBy(() -> Settlement.create(SettlementId.generate(), GROUP_ID, PAYER, PAYER, AMOUNT))
+        assertThatThrownBy(() -> Settlement.create(SettlementId.generate(), GROUP_ID, PAYER, PAYER, AMOUNT, null))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test
+    void createWithoutCategoryDefaultsToOther() {
+        Settlement settlement = Settlement.create(SettlementId.generate(), GROUP_ID, PAYER, PAYEE, AMOUNT, null);
+
+        assertThat(settlement.category()).isEqualTo(Category.OTHER);
+    }
+
+    @Test
+    void createWithExplicitCategoryKeepsIt() {
+        Settlement settlement = Settlement.create(SettlementId.generate(), GROUP_ID, PAYER, PAYEE, AMOUNT, Category.ENTERTAINMENT);
+
+        assertThat(settlement.category()).isEqualTo(Category.ENTERTAINMENT);
+    }
+
+    @Test
     void requireDeletableAllowsPayer() {
-        Settlement settlement = Settlement.create(SettlementId.generate(), GROUP_ID, PAYER, PAYEE, AMOUNT);
+        Settlement settlement = Settlement.create(SettlementId.generate(), GROUP_ID, PAYER, PAYEE, AMOUNT, null);
 
         settlement.requireDeletable(PAYER, false);
     }
 
     @Test
     void requireDeletableAllowsGroupOwner() {
-        Settlement settlement = Settlement.create(SettlementId.generate(), GROUP_ID, PAYER, PAYEE, AMOUNT);
+        Settlement settlement = Settlement.create(SettlementId.generate(), GROUP_ID, PAYER, PAYEE, AMOUNT, null);
 
         settlement.requireDeletable(STRANGER, true);
     }
 
     @Test
     void requireDeletableRejectsStranger() {
-        Settlement settlement = Settlement.create(SettlementId.generate(), GROUP_ID, PAYER, PAYEE, AMOUNT);
+        Settlement settlement = Settlement.create(SettlementId.generate(), GROUP_ID, PAYER, PAYEE, AMOUNT, null);
 
         assertThatThrownBy(() -> settlement.requireDeletable(STRANGER, false))
                 .isInstanceOf(SettlementPermissionException.class);

@@ -61,7 +61,7 @@ public class TransactionController {
                                                         @Valid @RequestBody CreateTransactionRequest request) {
         Transaction transaction = createTransactionUseCase.create(
                 new GroupId(groupId), userId(jwt),
-                new TransactionDescription(request.description()), new Amount(request.amount()), shares(request.shares()));
+                new TransactionDescription(request.description()), new Amount(request.amount()), request.category(), shares(request.shares()));
         return ResponseEntity.ok(TransactionResponse.from(transaction));
     }
 
@@ -86,7 +86,7 @@ public class TransactionController {
                                                         @Valid @RequestBody UpdateTransactionRequest request) {
         Transaction transaction = updateTransactionUseCase.update(
                 new GroupId(groupId), new TransactionId(transactionId), userId(jwt),
-                new TransactionDescription(request.description()), new Amount(request.amount()), shares(request.shares()));
+                new TransactionDescription(request.description()), new Amount(request.amount()), request.category(), shares(request.shares()));
         return ResponseEntity.ok(TransactionResponse.from(transaction));
     }
 
