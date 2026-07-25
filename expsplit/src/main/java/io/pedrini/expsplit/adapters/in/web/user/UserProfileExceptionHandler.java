@@ -19,9 +19,4 @@ class UserProfileExceptionHandler {
     ResponseEntity<String> handleAlreadyExists(UserProfileAlreadyExistsException ex) {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(ex.getMessage());
     }
-
-    @ExceptionHandler(IllegalArgumentException.class)
-    ResponseEntity<String> handleInvalidInput(IllegalArgumentException ex) {
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ex.getMessage());
-    }
 }
