@@ -1,5 +1,6 @@
 package io.pedrini.expsplit;
 
+import io.pedrini.expsplit.domain.transaction.model.Category;
 import io.pedrini.expsplit.domain.transaction.model.TransactionId;
 import io.pedrini.expsplit.domain.transaction.port.out.TransactionRepository;
 import io.pedrini.expsplit.domain.user.model.UserProfile;
@@ -146,13 +147,10 @@ class TransactionIntegrationTest {
         createProfile(ownerId);
         UUID groupId = createGroup(ownerId);
 
-        String body = "{\"description\":\"" + DESCRIPTION + "\",\"amount\":50,\"category\":\"TRANSPORT\","
-                + "\"shares\":[{\"userId\":\"" + ownerId + "\",\"percentage\":100}]}";
+        CreateTransactionRequest request = new CreateTransactionRequest(DESCRIPTION, new BigDecimal("50"), Category.TRANSPORT,
+                List.of(new ShareRequest(ownerId, new BigDecimal("100"))));
 
-        mockMvc.perform(post("/groups/" + groupId + "/transactions")
-                        .with(authenticatedAs(ownerId))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(body))
+        createTransaction(groupId, ownerId, request)
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.category").value("TRANSPORT"));
     }
@@ -338,5 +336,10 @@ class TransactionIntegrationTest {
 
     private record ShareRequest(UUID userId, BigDecimal percentage) { }
 
-    private record CreateTransactionRequest(String description, BigDecimal amount, List<ShareRequest> shares) { }
+    private record CreateTransactionRequest(String description, BigDecimal amount, Category category, List<ShareRequest> shares) {
+
+        CreateTransactionRequest(String description, BigDecimal amount, List<ShareRequest> shares) {
+            this(description, amount, null, shares);
+        }
+    }
 }

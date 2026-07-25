@@ -1,6 +1,7 @@
 package io.pedrini.expsplit;
 
 import io.pedrini.expsplit.domain.settlement.model.SettlementId;
+import io.pedrini.expsplit.domain.transaction.model.Category;
 import io.pedrini.expsplit.domain.settlement.port.out.SettlementRepository;
 import io.pedrini.expsplit.domain.user.model.UserProfile;
 import io.pedrini.expsplit.domain.user.model.UserProfileEmail;
@@ -88,10 +89,16 @@ class SettlementIntegrationTest {
     }
 
     private ResultActions createSettlement(UUID groupId, UUID requesterId, UUID payeeId, String amount) throws Exception {
+        return createSettlement(groupId, requesterId, payeeId, amount, null);
+    }
+
+    private ResultActions createSettlement(UUID groupId, UUID requesterId, UUID payeeId, String amount, Category category) throws Exception {
+        CreateSettlementRequest request = new CreateSettlementRequest(payeeId, new BigDecimal(amount), category);
+
         return mockMvc.perform(post("/groups/" + groupId + "/settlements")
                 .with(authenticatedAs(requesterId))
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(new CreateSettlementRequest(payeeId, new BigDecimal(amount)))));
+                .content(objectMapper.writeValueAsString(request)));
     }
 
     private ResultActions getSettlement(UUID groupId, UUID settlementId, UUID requesterId) throws Exception {
@@ -135,12 +142,7 @@ class SettlementIntegrationTest {
         UUID groupId = createGroup(ownerId);
         addAcceptedMember(groupId, ownerId, memberId);
 
-        String body = "{\"payeeId\":\"" + ownerId + "\",\"amount\":20,\"category\":\"FOOD\"}";
-
-        mockMvc.perform(post("/groups/" + groupId + "/settlements")
-                        .with(authenticatedAs(memberId))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(body))
+        createSettlement(groupId, memberId, ownerId, "20", Category.FOOD)
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.category").value("FOOD"));
     }
@@ -265,5 +267,5 @@ class SettlementIntegrationTest {
 
     private record InviteMemberRequest(UUID userId) { }
 
-    private record CreateSettlementRequest(UUID payeeId, BigDecimal amount) { }
+    private record CreateSettlementRequest(UUID payeeId, BigDecimal amount, Category category) { }
 }
