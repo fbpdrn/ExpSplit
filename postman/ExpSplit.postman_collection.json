@@ -1,11 +1,10 @@
 {
   "info": {
-    "_postman_id": "26ee38d6-83e6-4c8b-9aba-ae14bb2faa25",
+    "_postman_id": "f1d3aec0-ea14-4c7f-81ed-a480fc268f9d",
     "name": "ExpSplit",
-    "description": "",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
     "_exporter_id": "56893959",
-    "_collection_link": "https://go.postman.co/collection/56893959-26ee38d6-83e6-4c8b-9aba-ae14bb2faa25?source=collection_link"
+    "_collection_link": "https://go.postman.co/collection/56893959-f1d3aec0-ea14-4c7f-81ed-a480fc268f9d?source=collection_link"
   },
   "item": [
     {
