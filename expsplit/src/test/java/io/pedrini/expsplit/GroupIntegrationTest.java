@@ -106,7 +106,7 @@ class GroupIntegrationTest {
     }
 
     @Test
-    void createGroupHasSingleOwner() throws Exception {
+    void createGroup() throws Exception {
         UUID ownerId = UUID.randomUUID();
         createProfile(ownerId);
 
@@ -122,7 +122,7 @@ class GroupIntegrationTest {
     }
 
     @Test
-    void createGroupBlankNameBadRequest() throws Exception {
+    void createGroupBlank() throws Exception {
         UUID ownerId = UUID.randomUUID();
         createProfile(ownerId);
 
@@ -134,24 +134,24 @@ class GroupIntegrationTest {
     }
 
     @Test
-    void getGroupNotFound() throws Exception {
+    void groupNotFound() throws Exception {
         UUID userId = UUID.randomUUID();
 
         getGroup(UUID.randomUUID(), userId).andExpect(status().isNotFound());
     }
 
     @Test
-    void getGroupAsNonMemberNotFound() throws Exception {
+    void groupNotMember() throws Exception {
         UUID ownerId = UUID.randomUUID();
-        UUID strangerId = UUID.randomUUID();
+        UUID randomId = UUID.randomUUID();
         createProfile(ownerId);
         UUID groupId = createGroup(ownerId);
 
-        getGroup(groupId, strangerId).andExpect(status().isNotFound());
+        getGroup(groupId, randomId).andExpect(status().isNotFound());
     }
 
     @Test
-    void inviteMemberAddsPendingMembership() throws Exception {
+    void invitePending() throws Exception {
         UUID ownerId = UUID.randomUUID();
         UUID memberId = UUID.randomUUID();
         createProfile(ownerId);
@@ -164,7 +164,7 @@ class GroupIntegrationTest {
     }
 
     @Test
-    void inviteMemberByNonOwnerForbidden() throws Exception {
+    void invitePermission() throws Exception {
         UUID ownerId = UUID.randomUUID();
         UUID memberId = UUID.randomUUID();
         UUID strangerId = UUID.randomUUID();
@@ -179,7 +179,7 @@ class GroupIntegrationTest {
     }
 
     @Test
-    void inviteMemberTwiceConflict() throws Exception {
+    void inviteDuplicate() throws Exception {
         UUID ownerId = UUID.randomUUID();
         UUID memberId = UUID.randomUUID();
         createProfile(ownerId);
@@ -191,17 +191,17 @@ class GroupIntegrationTest {
     }
 
     @Test
-    void inviteMemberWithoutProfileNotFound() throws Exception {
+    void inviteNotMember() throws Exception {
         UUID ownerId = UUID.randomUUID();
-        UUID strangerId = UUID.randomUUID();
+        UUID randomId = UUID.randomUUID();
         createProfile(ownerId);
         UUID groupId = createGroup(ownerId);
 
-        invite(groupId, ownerId, strangerId).andExpect(status().isNotFound());
+        invite(groupId, ownerId, randomId).andExpect(status().isNotFound());
     }
 
     @Test
-    void acceptInvitationBecomesAcceptedMember() throws Exception {
+    void inviteAccept() throws Exception {
         UUID ownerId = UUID.randomUUID();
         UUID memberId = UUID.randomUUID();
         createProfile(ownerId);
@@ -215,7 +215,7 @@ class GroupIntegrationTest {
     }
 
     @Test
-    void acceptWithoutInvitationNotFound() throws Exception {
+    void inviteAcceptNoInvite() throws Exception {
         UUID ownerId = UUID.randomUUID();
         UUID memberId = UUID.randomUUID();
         createProfile(ownerId);
@@ -225,7 +225,7 @@ class GroupIntegrationTest {
     }
 
     @Test
-    void rejectInvitationRemovesMembership() throws Exception {
+    void inviteReject() throws Exception {
         UUID ownerId = UUID.randomUUID();
         UUID memberId = UUID.randomUUID();
         createProfile(ownerId);
@@ -239,7 +239,7 @@ class GroupIntegrationTest {
     }
 
     @Test
-    void leaveAsMemberKeepsGroup() throws Exception {
+    void leaveGroupExists() throws Exception {
         UUID ownerId = UUID.randomUUID();
         UUID memberId = UUID.randomUUID();
         createProfile(ownerId);
@@ -255,7 +255,7 @@ class GroupIntegrationTest {
     }
 
     @Test
-    void leaveAsSoleOwnerDeletesGroup() throws Exception {
+    void leaveGroupDelete() throws Exception {
         UUID ownerId = UUID.randomUUID();
         createProfile(ownerId);
         UUID groupId = createGroup(ownerId);
@@ -267,7 +267,7 @@ class GroupIntegrationTest {
     }
 
     @Test
-    void leaveAsOwnerPromotesAnotherMember() throws Exception {
+    void leaveGroupPromote() throws Exception {
         UUID ownerId = UUID.randomUUID();
         UUID memberId = UUID.randomUUID();
         createProfile(ownerId);
@@ -285,17 +285,17 @@ class GroupIntegrationTest {
     }
 
     @Test
-    void leaveNotMemberNotFound() throws Exception {
+    void leaveGroupNoMember() throws Exception {
         UUID ownerId = UUID.randomUUID();
-        UUID strangerId = UUID.randomUUID();
+        UUID randomId = UUID.randomUUID();
         createProfile(ownerId);
         UUID groupId = createGroup(ownerId);
 
-        leave(groupId, strangerId).andExpect(status().isNotFound());
+        leave(groupId, randomId).andExpect(status().isNotFound());
     }
 
     @Test
-    void deleteGroupAsOwner() throws Exception {
+    void deleteGroup() throws Exception {
         UUID ownerId = UUID.randomUUID();
         createProfile(ownerId);
         UUID groupId = createGroup(ownerId);
@@ -306,7 +306,7 @@ class GroupIntegrationTest {
     }
 
     @Test
-    void deleteGroupByNonOwnerForbidden() throws Exception {
+    void deleteGroupNoPermission() throws Exception {
         UUID ownerId = UUID.randomUUID();
         UUID memberId = UUID.randomUUID();
         createProfile(ownerId);
@@ -321,7 +321,6 @@ class GroupIntegrationTest {
     @Test
     void deleteGroupNotFound() throws Exception {
         UUID ownerId = UUID.randomUUID();
-
         deleteGroup(UUID.randomUUID(), ownerId).andExpect(status().isNotFound());
     }
 
