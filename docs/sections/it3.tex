@@ -1,0 +1,81 @@
+% Iterazione 3
+\section{Iterazione 3}
+
+\subsection{Introduzione}
+L'iterazione 3 si concentra sul \emph{deployment effettivo} del sistema: containerizzazione dei tre servizi con Docker Compose, cifratura e autenticazione reciproca del traffico interno (\emph{mTLS}).
+
+Si aggiungono inoltre due rifiniture pensate per l'utilizzo da parte di un client. È stato introdotto un endpoint dedicato per recuperare gli inviti in sospeso di un utente: senza sarebbe stato impossibile per il client recuperare l'identificativo del gruppo. Allo stesso modo le risposte REST che coinvolgono altri utenti sono state arricchite con le relative informazioni di profilo, evitando di dover aggiungere ulteriori endpoint e/o richieste aggiuntive da parte del client.
+
+\subsection{Deployment con Docker}
+I tre servizi (\emph{Gateway}, \emph{Auth}, \emph{ExpSplit}) e PostgreSQL vengono orchestrati tramite un unico \texttt{docker-compose.yml} alla radice del repository. Le immagini dei tre servizi Spring Boot condividono lo stesso \texttt{Dockerfile} multi-stage parametrizzato. L'esecuzione di una build multi-stage permette di ridurre il peso dell'immagine finale creata:
+
+\begin{itemize}
+    \item \textbf{Stage 1:} immagine con \texttt{JDK} che esegue la compilazione;
+    \item \textbf{Stage 2:} immagine con \texttt{JRE} che permette l'esecuzione del \texttt{jar} risultante dello \texttt{Stage 1}.
+\end{itemize}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.9\textwidth]{deployment-it3.png}
+    \caption{Deployment con Docker Compose e mTLS interno}
+    \label{fig:deployment-it3}
+\end{figure}
+
+\subsubsection{Rete}
+Tutti i servizi comunicato sulla rete creata con Docker Compose. L'unico punto di accesso è il \emph{Gateway} che espone la porta \texttt{8080} via \texttt{HTTPS}. \emph{PostgreSQL}, \emph{Auth} ed \emph{ExpSplit} non sono raggiungibili direttamente dall'esterno.
+
+\subsubsection{Configurazione e inizializzazione}
+Per l'inizializzazione del database è necessario avviare uno script che crea i ruoli \texttt{expsplit\_auth} ed \texttt{expsplit\_app} con permessi limitati al proprio schema. Le password e i percorsi per i servizi sono impostabili dalle variabili d'ambiente (configurabili nel file \texttt{.env}).
+
+\subsection{Sicurezza}
+A differenza delle iterazioni precedenti dove i servizi comunicavano in HTTP in questa iterazione ogni canale di comunicazione è cifrato con distinzione tra il traffico interno e il traffico pubblico.
+
+\textbf{mTLS tra i servizi interni:} Le comunicazioni tra \emph{Gateway}, \emph{Auth} ed \emph{ExpSplit} richiedono \emph{mutual TLS}: ciascun servizio espone un certificato server e richiede, a sua volta, un certificato client valido a chi lo contatta. Ogni servizio quindi dimostra la propria identità con un certificato firmato dalla stessa CA.
+
+\textbf{HTTPS.} Il \emph{Gateway} utilizza invece TLS \emph{server-side} tradizionale: il servizio espone un certificato senza richiesta di un certificato da parte del client.
+
+\textbf{Certificati.} Tutti i certificati sono autofirmati da una CA interna generata da uno script che crea la CA, un truststore condiviso (contenente solo il certificato della CA) e, per ciascun servizio, una coppia di chiavi con relativo certificato. I certificati vengono esportati in formato PKCS12.
+
+\subsection{Nuovo caso d'uso}
+
+\subsubsection{UC3.5 - Elenco inviti in sospeso}
+\begin{itemize}
+    \item \textbf{Attori:} Utente autenticato;
+    \item \textbf{Descrizione:} un utente recupera l'elenco di tutti gli inviti a gruppi ancora in sospeso a lui rivolti, senza dover conoscere in anticipo l'identificativo dei gruppi coinvolti;
+    \item \textbf{Precondizioni:} nessuna oltre all'autenticazione;
+    \item \textbf{Postcondizioni:} nessuna: l'operazione è di sola lettura;
+    \item \textbf{Flusso degli eventi principale:}
+    \begin{enumerate}
+        \item l'utente invia \texttt{GET \url{/invitations}};
+        \item il servizio recupera tutti i gruppi in cui l'utente ha una \texttt{Membership} in stato \texttt{PENDING};
+        \item per ciascun gruppo trovato viene restituito l'identificativo, il nome del gruppo e la data dell'invito;
+        \item l'utente prosegue con gli endpoint già esistenti di UC3.2 (\texttt{POST \url{/groups/{groupId}/invitations/accept}} o \url{.../reject}) per elaborare la risposta all'invito.
+    \end{enumerate}
+    \item \textbf{Flussi alternativi:}
+    \begin{itemize}
+        \item \emph{Nessun invito in sospeso:} viene restituita una lista vuota (\texttt{200 OK}).
+    \end{itemize}
+\end{itemize}
+
+Il nuovo endpoint si aggiunge alla tabella \ref{tab:expsplit-endpoints} dell'iterazione precedente:
+
+\begin{table}[H]
+    \centering
+    \begin{tabular}{lll}
+        \hline
+        \textbf{Metodo} & \textbf{Percorso} & \textbf{Caso d'uso} \\
+        \hline
+        GET & \url{/invitations} & UC3.5 \\
+        \hline
+    \end{tabular}
+    \caption{Nuovo endpoint: invitations}
+    \label{tab:expsplit-endpoints-it3}
+\end{table}
+
+\subsection{Arricchimento delle risposte REST}
+Nell'iterazione 2 le risposte REST che referenziavano un utente  esponevano esclusivamente il relativo \texttt{UserProfileId}, delegando a un client applicativo il compito di risolverlo separatamente. In vista di un utilizzo reale da parte di un'applicazione e per ridurre il numero di richieste, ogni riferimento a un utente è stato sostituito con l'oggetto profilo completo (\texttt{id}, \texttt{email}, \texttt{firstName}, \texttt{lastName}), lo stesso restituito da \texttt{GET \url{/profile}}.
+
+L'informazione viene aggiunta lato server con un'unica interrogazione per risposta, anche per le liste, evitando una richiesta separata per ciascun riferimento. Se un profilo è nel frattempo stato eliminato, il rispettivo campo viene restituito semplicemente a \texttt{null} senza generare un'eccezione.
+
+\subsection{Testing}
+I casi di test sono stati estesi per contemplare anche il nuovo endpoint. Il nuovo numero di test è 137 divisi tra test unitari e test di integrazione. I casi di test utilizzando il profilo \texttt{nomtls} e non vengono impattati dalle modifiche relative alla sicurezza apportate. La verifica di tutto il sistema con \texttt{HTTPS}, \texttt{mTLS} e \texttt{Docker} è stata eseguita manualmente con \texttt{Postman}.
