@@ -1,0 +1,6 @@
+server:
+  ssl:
+    enabled: false
+
+jwt:
+  jwks-uri: ${AUTH_JWKS_URI:http://localhost:8081/.well-known/jwks.json}

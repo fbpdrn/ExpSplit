@@ -7,5 +7,11 @@ spring:
 
 gateway:
   upstream:
-    auth-url: ${AUTH_SERVICE_URL:http://localhost:8081}
-    expsplit-url: ${EXPSPLIT_SERVICE_URL:http://localhost:8082}
+    auth-url: ${AUTH_SERVICE_URL:https://localhost:8081}
+    expsplit-url: ${EXPSPLIT_SERVICE_URL:https://localhost:8082}
+
+mtls:
+  keystore-path: ../certs/gateway/keystore.p12
+  keystore-password: expsplit_cert
+  truststore-path: ../certs/gateway/truststore.p12
+  truststore-password: expsplit_cert

@@ -1,9 +1,22 @@
 server:
   port: 8081
+  ssl:
+    enabled: true
+    key-store: file:${SSL_KEYSTORE_PATH:../certs/auth/keystore.p12}
+    key-store-password: ${SSL_KEYSTORE_PASSWORD:expsplit_cert}
+    key-store-type: PKCS12
+    key-alias: auth
+    trust-store: file:${SSL_TRUSTSTORE_PATH:../certs/auth/truststore.p12}
+    trust-store-password: ${SSL_TRUSTSTORE_PASSWORD:expsplit_cert}
+    trust-store-type: PKCS12
+    client-auth: need
 
 spring:
   application:
     name: auth
+  profiles:
+    group:
+      test: nomtls
   datasource:
     url: ${DB_URL:jdbc:postgresql://localhost:5432/expsplit}
     username: ${DB_USERNAME:expsplit_auth}

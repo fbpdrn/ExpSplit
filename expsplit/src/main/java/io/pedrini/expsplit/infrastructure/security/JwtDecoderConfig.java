@@ -9,14 +9,16 @@ import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.JwtIssuerValidator;
 import org.springframework.security.oauth2.jwt.JwtValidators;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
+import org.springframework.web.client.RestOperations;
 
 @Configuration
 public class JwtDecoderConfig {
 
     @Bean
-    public JwtDecoder jwtDecoder(JwtProperties jwtProperties) {
+    public JwtDecoder jwtDecoder(JwtProperties jwtProperties, RestOperations restOperations) {
         NimbusJwtDecoder decoder = NimbusJwtDecoder
                 .withJwkSetUri(jwtProperties.jwksUri())
+                .restOperations(restOperations)
                 .build();
 
         OAuth2TokenValidator<Jwt> validator = new DelegatingOAuth2TokenValidator<>(

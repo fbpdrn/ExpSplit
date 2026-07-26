@@ -19,10 +19,11 @@ class ProxyController {
     private static final Set<String> EXCLUDED_REQUEST_HEADERS = Set.of("host", "content-length", "connection");
     private static final Set<String> EXCLUDED_RESPONSE_HEADERS = Set.of("transfer-encoding", "content-length", "connection");
 
-    private final RestClient restClient = RestClient.create();
+    private final RestClient restClient;
     private final GatewayProperties properties;
 
-    ProxyController(GatewayProperties properties) {
+    ProxyController(RestClient restClient, GatewayProperties properties) {
+        this.restClient = restClient;
         this.properties = properties;
     }
 

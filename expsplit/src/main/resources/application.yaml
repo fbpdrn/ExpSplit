@@ -1,9 +1,22 @@
 server:
   port: 8082
+  ssl:
+    enabled: true
+    key-store: file:${SSL_KEYSTORE_PATH:../certs/expsplit/keystore.p12}
+    key-store-password: ${SSL_KEYSTORE_PASSWORD:expsplit_cert}
+    key-store-type: PKCS12
+    key-alias: expsplit
+    trust-store: file:${SSL_TRUSTSTORE_PATH:../certs/expsplit/truststore.p12}
+    trust-store-password: ${SSL_TRUSTSTORE_PASSWORD:expsplit_cert}
+    trust-store-type: PKCS12
+    client-auth: need
 
 spring:
   application:
     name: expsplit
+  profiles:
+    group:
+      test: nomtls
   datasource:
     url: ${DB_URL:jdbc:postgresql://localhost:5432/expsplit}
     username: ${DB_USERNAME:expsplit_app}
@@ -16,4 +29,10 @@ spring:
 
 jwt:
   issuer: expsplit-auth
-  jwks-uri: ${AUTH_JWKS_URI:http://localhost:8081/.well-known/jwks.json}
+  jwks-uri: ${AUTH_JWKS_URI:https://localhost:8081/.well-known/jwks.json}
+
+mtls:
+  keystore-path: ../certs/expsplit/keystore.p12
+  keystore-password: expsplit_cert
+  truststore-path: ../certs/expsplit/truststore.p12
+  truststore-password: expsplit_cert
