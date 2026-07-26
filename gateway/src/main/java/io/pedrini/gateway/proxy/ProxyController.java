@@ -18,6 +18,7 @@ class ProxyController {
 
     private static final Set<String> EXCLUDED_REQUEST_HEADERS = Set.of("host", "content-length", "connection");
     private static final Set<String> EXCLUDED_RESPONSE_HEADERS = Set.of("transfer-encoding", "content-length", "connection");
+    private static final String FORWARDED_FOR_HEADER = "X-Forwarded-For";
 
     private final RestClient restClient;
     private final GatewayProperties properties;
@@ -55,6 +56,13 @@ class ProxyController {
                 forwardedHeaders.addAll(name, Collections.list(request.getHeaders(name)));
             }
         }
+
+        // Si propaga l'indirizzo IP del client originale, accodandolo a eventuali valori già presenti
+        String existingForwardedFor = request.getHeader(FORWARDED_FOR_HEADER);
+        String forwardedFor = existingForwardedFor != null
+                ? existingForwardedFor + ", " + request.getRemoteAddr()
+                : request.getRemoteAddr();
+        forwardedHeaders.set(FORWARDED_FOR_HEADER, forwardedFor);
 
         return restClient.method(HttpMethod.valueOf(request.getMethod()))
                 .uri(targetUrl)
