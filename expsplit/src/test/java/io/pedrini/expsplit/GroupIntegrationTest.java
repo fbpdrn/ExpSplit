@@ -95,6 +95,10 @@ class GroupIntegrationTest {
         return mockMvc.perform(get("/groups/" + groupId).with(authenticatedAs(userId)));
     }
 
+    private ResultActions listInvitations(UUID userId) throws Exception {
+        return mockMvc.perform(get("/invitations").with(authenticatedAs(userId)));
+    }
+
     private JsonNode memberNode(ResultActions result, UUID userId) throws Exception {
         JsonNode json = objectMapper.readTree(result.andReturn().getResponse().getContentAsByteArray());
         for (JsonNode member : json.get("members")) {
@@ -236,6 +240,48 @@ class GroupIntegrationTest {
         reject(groupId, memberId)
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.members.length()").value(1));
+    }
+
+    @Test
+    void listPendingInvitations() throws Exception {
+        UUID ownerId = UUID.randomUUID();
+        UUID memberId = UUID.randomUUID();
+        createProfile(ownerId);
+        createProfile(memberId);
+        UUID groupId = createGroup(ownerId);
+
+        invite(groupId, ownerId, memberId).andExpect(status().isOk());
+
+        listInvitations(memberId)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].groupId").value(groupId.toString()))
+                .andExpect(jsonPath("$[0].groupName").value(GROUP));
+    }
+
+    @Test
+    void listPendingInvitationsEmpty() throws Exception {
+        UUID userId = UUID.randomUUID();
+        createProfile(userId);
+
+        listInvitations(userId)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(0));
+    }
+
+    @Test
+    void listPendingInvitationsFilterResponse() throws Exception {
+        UUID ownerId = UUID.randomUUID();
+        UUID memberId = UUID.randomUUID();
+        createProfile(ownerId);
+        createProfile(memberId);
+        UUID groupId = createGroup(ownerId);
+        invite(groupId, ownerId, memberId).andExpect(status().isOk());
+
+        accept(groupId, memberId).andExpect(status().isOk());
+
+        listInvitations(memberId).andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(0));
+        listInvitations(ownerId).andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(0));
     }
 
     @Test
