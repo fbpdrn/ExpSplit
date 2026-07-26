@@ -1,0 +1,21 @@
+flowchart TB
+    C["Client"]
+
+    subgraph DOCKER["Rete Docker interna"]
+        GW["Gateway :8080<br/>(HTTPS)"]
+        AUTH["Auth :8081<br/>(mTLS)"]
+        EXP["ExpSplit :8082<br/>(mTLS)"]
+        DB[("PostgreSQL :5432")]
+    end
+
+    C -->|"HTTPS"| GW
+
+    GW -->|"mTLS · /auth/**"| AUTH
+    GW -.->|"mTLS · /**"| EXP
+    EXP -.->|"mTLS · JWKS"| AUTH
+
+    AUTH --> DB
+    EXP --> DB
+
+    style EXP stroke-dasharray: 5 5
+    style DOCKER stroke-dasharray: 2 2
