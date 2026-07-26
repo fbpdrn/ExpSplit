@@ -130,7 +130,7 @@ Di seguito sono dettagliati i casi d'uso più rappresentativi dell'iterazione; i
     \item \textbf{Postcondizioni:} viene creato un nuovo gruppo con un unico membro (l'utente stesso), in stato \texttt{ACCEPTED} e ruolo \texttt{OWNER};
     \item \textbf{Flusso degli eventi principale:}
     \begin{enumerate}
-        \item l'utente invia una richiesta di creazione (nome del gruppo) a \texttt{POST /groups};
+        \item l'utente invia una richiesta di creazione (nome del gruppo) a \texttt{POST \url{/groups}};
         \item il servizio valida che il nome non sia vuoto e non superi la lunghezza massima consentita;
         \item viene creato un nuovo \texttt{Group} con l'utente richiedente come unico membro, ruolo \texttt{OWNER};
         \item il gruppo creato viene restituito, incluso l'identificativo assegnato.
@@ -229,33 +229,33 @@ La tabella seguente riepiloga gli endpoint esposti da \emph{ExpSplit}, tutti pro
         \hline
         \textbf{Metodo} & \textbf{Percorso} & \textbf{Caso d'uso} \\
         \hline
-        POST & /profile & UC2 \\
-        GET & /profile & UC2 \\
-        PATCH & /profile & UC2.1 \\
-        DELETE & /profile & UC2.2 \\
+        POST & \url{/profile} & UC2 \\
+        GET & \url{/profile} & UC2 \\
+        PATCH & \url{/profile} & UC2.1 \\
+        DELETE & \url{/profile} & UC2.2 \\
         \hline
-        POST & /groups & UC3.1 \\
-        GET & /groups/\{groupId\} & UC3 \\
-        POST & /groups/\{groupId\}/invitations & UC3.2 \\
-        POST & /groups/\{groupId\}/invitations/accept & UC3.2 \\
-        POST & /groups/\{groupId\}/invitations/reject & UC3.2 \\
-        DELETE & /groups/\{groupId\}/members/me & UC3.3 \\
-        DELETE & /groups/\{groupId\} & UC3.4 \\
+        POST & \url{/groups} & UC3.1 \\
+        GET & \url{/groups/{groupId}} & UC3 \\
+        POST & \url{/groups/{groupId}/invitations} & UC3.2 \\
+        POST & \url{/groups/{groupId}/invitations/accept} & UC3.2 \\
+        POST & \url{/groups/{groupId}/invitations/reject} & UC3.2 \\
+        DELETE & \url{/groups/{groupId}/members/me} & UC3.3 \\
+        DELETE & \url{/groups/{groupId}} & UC3.4 \\
         \hline
-        POST & /groups/\{groupId\}/transactions & UC4.1 \\
-        GET & /groups/\{groupId\}/transactions & UC4 \\
-        GET & /groups/\{groupId\}/transactions/\{id\} & UC4 \\
-        PATCH & /groups/\{groupId\}/transactions/\{id\} & UC4.2 \\
-        DELETE & /groups/\{groupId\}/transactions/\{id\} & UC4.3 \\
+        POST & \url{/groups/{groupId}/transactions} & UC4.1 \\
+        GET & \url{/groups/{groupId}/transactions} & UC4 \\
+        GET & \url{/groups/{groupId}/transactions/{id}} & UC4 \\
+        PATCH & \url{/groups/{groupId}/transactions/{id}} & UC4.2 \\
+        DELETE & \url{/groups/{groupId}/transactions/{id}} & UC4.3 \\
         \hline
-        POST & /groups/\{groupId\}/settlements & UC4.1 \\
-        GET & /groups/\{groupId\}/settlements & UC4 \\
-        GET & /groups/\{groupId\}/settlements/\{id\} & UC4 \\
-        DELETE & /groups/\{groupId\}/settlements/\{id\} & UC4.3 \\
+        POST & \url{/groups/{groupId}/settlements} & UC4.1 \\
+        GET & \url{/groups/{groupId}/settlements} & UC4 \\
+        GET & \url{/groups/{groupId}/settlements/{id}} & UC4 \\
+        DELETE & \url{/groups/{groupId}/settlements/{id}} & UC4.3 \\
         \hline
-        GET & /groups/\{groupId\}/balance & UC5.1 \\
-        GET & /groups/\{groupId\}/balance/me & UC5.2 \\
-        GET & /groups/\{groupId\}/statistics & UC5.3 \\
+        GET & \url{/groups/{groupId}/balance} & UC5.1 \\
+        GET & \url{/groups/{groupId}/balance/me} & UC5.2 \\
+        GET & \url{/groups/{groupId}/statistics} & UC5.3 \\
         \hline
     \end{tabular}
     \caption{Endpoint REST del servizio ExpSplit}
@@ -275,6 +275,6 @@ Allo stato attuale sono stati creati 113 casi di test. Ogni funzionalità è sta
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.95\textwidth]{tests-it2.png}
-    \caption{Test)}
+    \caption{Risultati Test}
     \label{fig:tests-it2}
 \end{figure}
