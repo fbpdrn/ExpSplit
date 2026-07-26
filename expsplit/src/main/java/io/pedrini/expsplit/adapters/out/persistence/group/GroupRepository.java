@@ -2,8 +2,10 @@ package io.pedrini.expsplit.adapters.out.persistence.group;
 
 import io.pedrini.expsplit.domain.group.model.Group;
 import io.pedrini.expsplit.domain.group.model.GroupId;
+import io.pedrini.expsplit.domain.user.model.UserProfileId;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 
 @Repository
@@ -24,6 +26,11 @@ class GroupRepository implements io.pedrini.expsplit.domain.group.port.out.Group
     @Override
     public Optional<Group> findById(GroupId id) {
         return jpaRepository.findById(id.id()).map(GroupMapper::toDomain);
+    }
+
+    @Override
+    public List<Group> findPendingInvitations(UserProfileId userId) {
+        return jpaRepository.findPendingInvitations(userId.id()).stream().map(GroupMapper::toDomain).toList();
     }
 
     @Override
