@@ -46,3 +46,5 @@ build/
 ### Secrets ###
 **/data/
 .env
+certs/*
+!certs/generate.sh
