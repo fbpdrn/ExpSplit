@@ -1,0 +1,52 @@
+classDiagram
+    class Group {
+        -GroupId id
+        -GroupName name
+        -List~Membership~ members
+        -Instant createdAt
+        +create(id, name, ownerId) Group$
+        +invite(inviterId, inviteeId)
+        +acceptInvitation(userId)
+        +rejectInvitation(userId)
+        +leave(userId) boolean
+        +requireOwner(userId)
+        +isOwner(userId) boolean
+        +isMember(userId) boolean
+    }
+
+    class Membership {
+        -UserProfileId userId
+        -Role role
+        -MembershipStatus status
+        -Instant invitedAt
+        -Instant joinedAt
+        ~owner(userId, now) Membership$
+        ~invited(userId, now) Membership$
+        ~accept(now)
+        ~promoteToOwner()
+        +isOwner() boolean
+        +isAccepted() boolean
+        +isPending() boolean
+    }
+
+    class Role {
+        <<enumeration>>
+        OWNER
+        MEMBER
+    }
+
+    class MembershipStatus {
+        <<enumeration>>
+        PENDING
+        ACCEPTED
+    }
+
+    Group "1" *-- "1..*" Membership : members
+    Membership --> Role
+    Membership --> MembershipStatus
+    Membership --> UserProfileId : riferimento per ID
+
+    class UserProfileId {
+        <<value object>>
+        +UUID id
+    }

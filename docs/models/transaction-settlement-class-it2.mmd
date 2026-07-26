@@ -1,0 +1,59 @@
+classDiagram
+    class Transaction {
+        -TransactionId id
+        -GroupId groupId
+        -UserProfileId paidBy
+        -TransactionDescription description
+        -Amount amount
+        -Category category
+        -List~TransactionShare~ shares
+        -Instant createdAt
+        +create(id, groupId, paidBy, description, amount, category, shares) Transaction$
+        +update(description, amount, category, shares)
+        +requireModifiable(requesterId, requesterIsGroupOwner)
+        -normalizeShares(shares) List~TransactionShare~$
+    }
+
+    class TransactionShare {
+        +UserProfileId userId
+        +SharePercentage percentage
+    }
+
+    class SharePercentage {
+        <<value object>>
+        +BigDecimal value
+    }
+
+    class Amount {
+        <<value object>>
+        +BigDecimal value
+    }
+
+    class Category {
+        <<enumeration>>
+        FOOD
+        TRANSPORT
+        ACCOMMODATION
+        ENTERTAINMENT
+        UTILITIES
+        OTHER
+    }
+
+    class Settlement {
+        -SettlementId id
+        -GroupId groupId
+        -UserProfileId payerId
+        -UserProfileId payeeId
+        -Amount amount
+        -Category category
+        -Instant createdAt
+        +create(id, groupId, payerId, payeeId, amount, category) Settlement$
+        +requireDeletable(requesterId, requesterIsGroupOwner)
+    }
+
+    Transaction "1" *-- "1..*" TransactionShare : shares
+    TransactionShare --> SharePercentage
+    Transaction --> Amount
+    Transaction --> Category
+    Settlement --> Amount
+    Settlement --> Category

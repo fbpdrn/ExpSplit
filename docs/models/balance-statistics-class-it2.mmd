@@ -1,0 +1,37 @@
+classDiagram
+    class BalanceCalculator {
+        +of(transactions, settlements) BalanceCalculator$
+        +netBalance(userId) BigDecimal
+        +netOwedTo(from, to) BigDecimal
+    }
+
+    class Balance {
+        +UserProfileId userId
+        +BigDecimal netAmount
+    }
+
+    class BalanceComparison {
+        +UserProfileId counterpartId
+        +BigDecimal netAmount
+    }
+
+    class UserBalanceDetail {
+        +UserProfileId userId
+        +BigDecimal netAmount
+        +List~BalanceComparison~ perCounterpart
+    }
+
+    class StatisticsCalculator {
+        +summarize(transactions) List~CategoryStatistic~$
+    }
+
+    class CategoryStatistic {
+        +Category category
+        +BigDecimal totalAmount
+        +long transactionCount
+    }
+
+    BalanceCalculator ..> Balance : produce
+    BalanceCalculator ..> UserBalanceDetail : produce
+    UserBalanceDetail "1" *-- "0..*" BalanceComparison
+    StatisticsCalculator ..> CategoryStatistic : produce

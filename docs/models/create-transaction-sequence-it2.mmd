@@ -1,0 +1,29 @@
+sequenceDiagram
+    actor U as Utente
+    participant TC as TransactionController
+    participant TS as TransactionService
+    participant GR as GroupRepository
+    participant TR as TransactionRepository
+
+    U->>TC: POST /groups/{groupId}/transactions
+    TC->>TS: create(groupId, requesterId, description, amount, category, shares)
+    TS->>GR: findById(groupId)
+    GR-->>TS: Group
+
+    alt gruppo inesistente
+        TS-->>TC: GroupNotFoundException
+        TC-->>U: 404 Not Found
+    else richiedente o partecipante non membro
+        TS-->>TC: NotGroupMemberException
+        TC-->>U: 404 Not Found
+    else percentuali non valide oltre la tolleranza
+        TS->>TS: Transaction.create(...)
+        TS-->>TC: IllegalArgumentException
+        TC-->>U: 400 Bad Request
+    else richiesta valida
+        TS->>TS: Transaction.create(...) normalizza le quote
+        TS->>TR: save(transaction)
+        TR-->>TS: Transaction
+        TS-->>TC: Transaction
+        TC-->>U: 200 OK
+    end

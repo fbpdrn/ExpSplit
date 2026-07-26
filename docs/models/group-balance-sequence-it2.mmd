@@ -1,0 +1,29 @@
+sequenceDiagram
+    actor U as Utente
+    participant BC as BalanceController
+    participant BS as BalanceService
+    participant GR as GroupRepository
+    participant TR as TransactionRepository
+    participant SR as SettlementRepository
+
+    U->>BC: GET /groups/{groupId}/balance
+    BC->>BS: getGroupBalance(groupId, requesterId)
+    BS->>GR: findById(groupId)
+    GR-->>BS: Group
+
+    alt gruppo inesistente
+        BS-->>BC: GroupNotFoundException
+        BC-->>U: 404 Not Found
+    else richiedente non membro
+        BS-->>BC: NotGroupMemberException
+        BC-->>U: 404 Not Found
+    else richiedente membro
+        BS->>TR: findByGroupId(groupId)
+        TR-->>BS: List of Transaction
+        BS->>SR: findByGroupId(groupId)
+        SR-->>BS: List of Settlement
+        BS->>BS: BalanceCalculator.of(transactions, settlements)
+        BS->>BS: netBalance(userId) per ogni membro
+        BS-->>BC: List of Balance
+        BC-->>U: 200 OK
+    end
