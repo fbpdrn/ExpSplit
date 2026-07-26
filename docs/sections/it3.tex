@@ -22,7 +22,7 @@ I tre servizi (\emph{Gateway}, \emph{Auth}, \emph{ExpSplit}) e PostgreSQL vengon
 \end{figure}
 
 \subsubsection{Rete}
-Tutti i servizi comunicato sulla rete creata con Docker Compose. L'unico punto di accesso è il \emph{Gateway} che espone la porta \texttt{8080} via \texttt{HTTPS}. \emph{PostgreSQL}, \emph{Auth} ed \emph{ExpSplit} non sono raggiungibili direttamente dall'esterno.
+Tutti i servizi comunicano sulla rete creata con Docker Compose. L'unico punto di accesso è il \emph{Gateway} che espone la porta \texttt{8080} via \texttt{HTTPS}. \emph{PostgreSQL}, \emph{Auth} ed \emph{ExpSplit} non sono raggiungibili direttamente dall'esterno.
 
 \subsubsection{Configurazione e inizializzazione}
 Per l'inizializzazione del database è necessario avviare uno script che crea i ruoli \texttt{expsplit\_auth} ed \texttt{expsplit\_app} con permessi limitati al proprio schema. Le password e i percorsi per i servizi sono impostabili dalle variabili d'ambiente (configurabili nel file \texttt{.env}).
@@ -57,7 +57,7 @@ A differenza delle iterazioni precedenti dove i servizi comunicavano in HTTP in 
     \end{itemize}
 \end{itemize}
 
-Il nuovo endpoint si aggiunge alla tabella \ref{tab:expsplit-endpoints} dell'iterazione precedente:
+Il nuovo endpoint si aggiunge alla tabella \ref{tab:expsplit-endpoints}:
 
 \begin{table}[H]
     \centering
@@ -73,9 +73,9 @@ Il nuovo endpoint si aggiunge alla tabella \ref{tab:expsplit-endpoints} dell'ite
 \end{table}
 
 \subsection{Arricchimento delle risposte REST}
-Nell'iterazione 2 le risposte REST che referenziavano un utente  esponevano esclusivamente il relativo \texttt{UserProfileId}, delegando a un client applicativo il compito di risolverlo separatamente. In vista di un utilizzo reale da parte di un'applicazione e per ridurre il numero di richieste, ogni riferimento a un utente è stato sostituito con l'oggetto profilo completo (\texttt{id}, \texttt{email}, \texttt{firstName}, \texttt{lastName}), lo stesso restituito da \texttt{GET \url{/profile}}.
+Le risposte REST che referenziavano un utente esponevano esclusivamente il relativo \texttt{UserProfileId}, delegando a un client applicativo il compito di risolverlo separatamente. In vista di un utilizzo reale da parte di un'applicazione e per ridurre il numero di richieste, ogni riferimento a un utente è stato sostituito con l'oggetto profilo completo (\texttt{id}, \texttt{email}, \texttt{firstName}, \texttt{lastName}), lo stesso restituito da \texttt{GET \url{/profile}}.
 
 L'informazione viene aggiunta lato server con un'unica interrogazione per risposta, anche per le liste, evitando una richiesta separata per ciascun riferimento. Se un profilo è nel frattempo stato eliminato, il rispettivo campo viene restituito semplicemente a \texttt{null} senza generare un'eccezione.
 
 \subsection{Testing}
-I casi di test sono stati estesi per contemplare anche il nuovo endpoint. Il nuovo numero di test è 137 divisi tra test unitari e test di integrazione. I casi di test utilizzando il profilo \texttt{nomtls} e non vengono impattati dalle modifiche relative alla sicurezza apportate. La verifica di tutto il sistema con \texttt{HTTPS}, \texttt{mTLS} e \texttt{Docker} è stata eseguita manualmente con \texttt{Postman}.
+I casi di test sono stati estesi per contemplare anche il nuovo endpoint. Il nuovo numero di test è 137 divisi tra test unitari e test di integrazione. I casi di test utilizzano il profilo \texttt{nomtls} e non sono quindi impattati dalle modifiche relative alla sicurezza apportate. La verifica di tutto il sistema con \texttt{HTTPS}, \texttt{mTLS} e \texttt{Docker} è stata eseguita manualmente con \texttt{Postman}.
