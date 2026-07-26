@@ -1,0 +1,80 @@
+services:
+  postgres:
+    image: postgres:18.4
+    container_name: expsplit-postgres
+    environment:
+      POSTGRES_USER: expsplit
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-expsplit}
+      POSTGRES_DB: expsplit
+      AUTH_DB_PASSWORD: ${AUTH_DB_PASSWORD:-expsplit_auth}
+      EXPSPLIT_DB_PASSWORD: ${EXPSPLIT_DB_PASSWORD:-expsplit_app}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql
+      - ./docker/postgres/init.sh:/docker-entrypoint-initdb.d/init.sh:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U expsplit -d expsplit"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  auth:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+      args:
+        MODULE: auth
+    container_name: expsplit-auth
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/expsplit
+      DB_USERNAME: expsplit_auth
+      DB_PASSWORD: ${AUTH_DB_PASSWORD:-expsplit_auth}
+      JWT_KEY_STORE_PATH: /data/jwt-signing-key.json
+    volumes:
+      - auth-keys:/data
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "8081:8081"
+
+  expsplit:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+      args:
+        MODULE: expsplit
+    container_name: expsplit-expsplit
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/expsplit
+      DB_USERNAME: expsplit_app
+      DB_PASSWORD: ${EXPSPLIT_DB_PASSWORD:-expsplit_app}
+      AUTH_JWKS_URI: http://auth:8081/.well-known/jwks.json
+    depends_on:
+      postgres:
+        condition: service_healthy
+      auth:
+        condition: service_started
+    ports:
+      - "8082:8082"
+
+  gateway:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+      args:
+        MODULE: gateway
+    container_name: expsplit-gateway
+    environment:
+      AUTH_SERVICE_URL: http://auth:8081
+      EXPSPLIT_SERVICE_URL: http://expsplit:8082
+    depends_on:
+      - auth
+      - expsplit
+    ports:
+      - "8080:8080"
+
+volumes:
+  postgres-data:
+  auth-keys:
