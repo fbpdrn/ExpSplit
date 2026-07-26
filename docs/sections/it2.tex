@@ -1,0 +1,280 @@
+% Iterazione 2
+\section{Iterazione 2}
+
+\subsection{Introduzione}
+L'iterazione 2 realizza il servizio \emph{ExpSplit}: tutti i casi d'uso vengono implementati e verificati.
+
+A differenza del servizio \emph{Auth}, caratterizzato unicamente da (\texttt{UserAuth}), \emph{ExpSplit} è composto da più elementi distinti che collaborano tra loro.
+
+\subsection{Architettura del servizio ExpSplit}
+Il servizio applica il pattern esagonale a livello di ogni singolo \emph{elemento} di dominio organizzato in un pacchetto dedicato con la struttura \texttt{domain} / \texttt{application} / \texttt{adapters} e possiede il proprio repository. 
+
+Le due funzionalità (\texttt{Balance} e \texttt{Statistics}) sono classi di appoggio non persistenti che leggono i dati di \texttt{Transaction} e \texttt{Settlement} già salvati e producono un risultato al momento della richiesta.
+
+\begin{itemize}
+    \item \textbf{Riferimenti:} ogni elemento conosce esclusivamente l'identificativo dell'altro elemento (es. \texttt{Group} ha solo accesso a un \texttt{UserProfileId} dei propri membri, non l'oggetto \texttt{UserProfile}). Questa scelta permette di mantenere l'indipendenza rigida tra i modelli;
+    \item \textbf{Dipendenza:} quando un'operazione richiede più elementi (es. verificare che un utente sia membro di un gruppo prima di creare una transazione), la verifica avviene nel \emph{servizio applicativo}, che dipende dai repository di entrambi gli elementi coinvolti.
+    \item \textbf{Validazione token:} la validazione del token JWT viene eseguita nel servizio \emph{ExpSplit} (tramite chiave pubblica JWKS esposta da \emph{Auth}). Ogni endpoint implementato in \emph{ExpSplit} necessita di un token valido.
+\end{itemize}
+
+\subsubsection{UserProfile}
+\texttt{UserProfile} rappresenta le informazioni personali di un utente all'interno di \emph{ExpSplit} ed è volutamente disaccoppiato da \texttt{UserAuth}: il servizio \emph{Auth} gestisce solo le credenziali, mentre \emph{ExpSplit} gestisce le informazioni aggiuntive.
+
+\subsubsection{Group}
+\texttt{Group} rappresenta un gruppo di spesa condivisa. La relazione e i permessi di un gruppo e utente sono concretizzati in \texttt{Membership}. Tutte le operazioni eseguibili su \texttt{Membership} sono eseguibili solo tramite i metodi di \texttt{Group}.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.85\textwidth]{group-class-it2.png}
+    \caption{Diagramma delle classi (Group)}
+    \label{fig:group-class}
+\end{figure}
+
+Per aggiungere un utente in un gruppo si utilizzano gli inviti. Un invito segue un ciclo a due fasi: un membro viene aggiunto in stato \texttt{PENDING} da un \texttt{Owner}, e transita a \texttt{ACCEPTED} solo quando l'invitato stesso accetta (o viene rimosso, se rifiuta). Se l'\texttt{Owner} abbandona il gruppo, il membro accettato più anziano (per data di adesione) viene promosso automaticamente a nuovo \texttt{Owner}; se non restano membri accettati, il gruppo viene eliminato automaticamente.
+
+\subsubsection{Transaction e Settlement}
+All'interno di un gruppo ci possono essere due tipi di movimenti finanziari: \texttt{Transaction} e \texttt{Settlement}.
+
+\begin{itemize}
+    \item \textbf{\texttt{Transaction}} rappresenta una spesa condivisa: un pagatore anticipa un importo, ripartito tra i membri del gruppo tramite percentuali (\texttt{TransactionShare});
+    \item \textbf{\texttt{Settlement}} rappresenta un pagamento diretto tra due utenti per saldare un debito, senza alcuna ripartizione.
+\end{itemize}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.9\textwidth]{transaction-settlement-class-it2.png}
+    \caption{Diagramma delle classi di Transaction e Settlement}
+    \label{fig:transaction-settlement-class}
+\end{figure}
+
+Le percentuali di ripartizione di una \texttt{Transaction} sono impostabili dall'utente e devono sommare a 100, a meno di qualche approssimazione che il servizio può gestire aggiungendo lo scarto all'ultima quota (fino a $0{,}01$ per ogni quota). Scarti superiori a questa tolleranza vengono invece rifiutati come input non valido. Molti campi tra \texttt{Transaction} e \texttt{Settlement} sono simili, ma sono stati volutamente tenuti separati per la loro funzione ed eventuale estensione. La modifica e la cancellazione sono permesse solo a chi ha creato il movimento oppure dall'\texttt{Owner} del gruppo.
+
+\subsubsection{Balance e Statistics}
+I \texttt{bilanci} e le \texttt{statistiche} sono pure classi logiche che leggono le \texttt{Transaction} e i \texttt{Settlement} già esistenti di un gruppo e producono un risultato aggregato al momento della richiesta, senza alcuno stato salvato.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.9\textwidth]{balance-statistics-class-it2.png}
+    \caption{Diagramma delle classi di Balance e Statistics}
+    \label{fig:balance-statistics-class}
+\end{figure}
+
+\texttt{BalanceCalculator} costruisce, a partire dalle spese e dai pagamenti diretti di un gruppo, un registro di debiti a coppie di utenti: ogni quota di una \texttt{Transaction} non attribuita al pagatore genera un debito verso di esso, mentre ogni \texttt{Settlement} viene trattato come un debito negativo che cancella il debito corrispondente nella stessa direzione. Da questa lista si ottengono sia il saldo netto complessivo di un utente nel gruppo, sia il dettaglio del saldo verso ciascun altro membro. \texttt{StatisticsCalculator} aggrega invece l'importo totale e il numero di transazioni per categoria di spesa, considerando l'importo pieno di ogni \texttt{Transaction} indipendentemente da come è ripartito, e i soli movimenti di tipo spesa: i \texttt{Settlement}, essendo rimborsi, sono esclusi dal conteggio.
+
+\subsubsection{Strategia di calcolo}
+Il calcolo del bilancio crea una struttura a coppie ordinate (debitore, creditore) popolata con un solo passaggio su transazioni e pagamenti diretti. Le richieste di saldo netto complessivo e dettaglio verso un singolo membro vengono poi derivate da questa struttura senza ricalcoli separati.
+
+Il punto centrale della strategia è trattare un \texttt{Settlement} come un debito \emph{negativo} nella stessa direzione del pagamento (da chi salda a chi riceve), anziché come un'operazione a parte da sottrarre esplicitamente da un debito esistente. In questo modo l'unica funzione \textsc{AddDebt} basta per entrambi i tipi di movimento: un pagamento diretto tra due utenti che non hanno debiti pregressi tra loro produce semplicemente un debito negativo, mentre se il beneficiario doveva effettivamente qualcosa al pagatore, il debito negativo si compensa con quello esistente nella stessa coppia senza bisogno di un caso particolare.
+
+\begin{algorithm}[H]
+\caption{Costruzione del registro dei debiti (\texttt{BalanceCalculator.of})}
+\label{alg:balance-ledger}
+\begin{algorithmic}[1]
+\Procedure{CostruisciRegistro}{$transazioni$, $pagamenti$}
+    \State $saldoNetto \gets$ mappa vuota (utente $\rightarrow$ importo)
+    \State $debitoACoppie \gets$ mappa vuota ((debitore, creditore) $\rightarrow$ importo)
+    \ForAll{$t \in transazioni$}
+        \ForAll{$quota \in t.ripartizione$}
+            \If{$quota.utente \neq t.pagatore$}
+                \State $importo \gets t.importo \times quota.percentuale / 100$
+                \State \Call{AggiungiDebito}{$quota.utente$, $t.pagatore$, $importo$}
+            \EndIf
+        \EndFor
+    \EndFor
+    \ForAll{$p \in pagamenti$}
+        \State \Call{AggiungiDebito}{$p.pagatore$, $p.beneficiario$, $-p.importo$}
+    \EndFor
+    \State \Return $(saldoNetto, debitoACoppie)$
+\EndProcedure
+
+\Procedure{AggiungiDebito}{$debitore$, $creditore$, $importo$}
+    \State $debitoACoppie[debitore, creditore] \gets debitoACoppie[debitore, creditore] + importo$
+    \State $saldoNetto[creditore] \gets saldoNetto[creditore] + importo$
+    \State $saldoNetto[debitore] \gets saldoNetto[debitore] - importo$
+\EndProcedure
+\end{algorithmic}
+\end{algorithm}
+
+Le due operazioni di lettura si riducono quindi a semplici accessi alla struttura già calcolata:
+
+\begin{itemize}
+    \item $\Call{SaldoNetto}{utente} = saldoNetto[utente]$;
+    \item $\Call{SaldoVerso}{da, a} = debitoACoppie[da, a] - debitoACoppie[a, da]$, la quota che $da$ deve a $a$ al netto della direzione opposta.
+\end{itemize}
+
+\subsection{Diagrammi di sequenza}
+Le sequenze seguenti illustrano la creazione di una \texttt{Transaction} e di una richiesta di \texttt{Balance}. Il pattern mostrato è analogo per tutti gli altri elementi del servizio.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{create-transaction-sequence-it2.png}
+    \caption{Creazione di una transazione con verifica di appartenenza al gruppo)}
+    \label{fig:create-transaction-sequence}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{group-balance-sequence-it2.png}
+    \caption{Richiesta del bilancio di un gruppo}
+    \label{fig:group-balance-sequence}
+\end{figure}
+
+\subsection{Casi d'uso}
+Di seguito sono dettagliati i casi d'uso più rappresentativi dell'iterazione; i restanti sono analoghi e sono descritti sinteticamente al termine della sezione.
+
+\subsubsection{UC3.1 - Creazione gruppo}
+\begin{itemize}
+    \item \textbf{Attori:} Utente autenticato;
+    \item \textbf{Descrizione:} un utente crea un nuovo gruppo di spesa, diventandone automaticamente proprietario;
+    \item \textbf{Precondizioni:} l'utente deve possedere un profilo (\texttt{UserProfile}) esistente;
+    \item \textbf{Postcondizioni:} viene creato un nuovo gruppo con un unico membro (l'utente stesso), in stato \texttt{ACCEPTED} e ruolo \texttt{OWNER};
+    \item \textbf{Flusso degli eventi principale:}
+    \begin{enumerate}
+        \item l'utente invia una richiesta di creazione (nome del gruppo) a \texttt{POST /groups};
+        \item il servizio valida che il nome non sia vuoto e non superi la lunghezza massima consentita;
+        \item viene creato un nuovo \texttt{Group} con l'utente richiedente come unico membro, ruolo \texttt{OWNER};
+        \item il gruppo creato viene restituito, incluso l'identificativo assegnato.
+    \end{enumerate}
+    \item \textbf{Flussi alternativi:}
+    \begin{itemize}
+        \item \emph{Nome non valido:} nome vuoto o troppo lungo comportano un errore di validazione (\texttt{400 Bad Request}).
+    \end{itemize}
+\end{itemize}
+
+\subsubsection{UC3.2 - Invito}
+\begin{itemize}
+    \item \textbf{Attori:} Proprietario del gruppo (invitante), utente invitato;
+    \item \textbf{Descrizione:} il proprietario di un gruppo invita un altro utente, registrato in \emph{ExpSplit}, a farne parte; l'invito resta in sospeso finché l'invitato non lo accetta o lo rifiuta;
+    \item \textbf{Precondizioni:} l'invitante deve essere proprietario del gruppo; l'utente invitato deve possedere un profilo (\texttt{UserProfile}) esistente e non essere già membro del gruppo;
+    \item \textbf{Postcondizioni:} viene aggiunta una nuova \texttt{Membership} in stato \texttt{PENDING} per l'utente invitato, con ruolo \texttt{MEMBER};
+    \item \textbf{Flusso degli eventi principale:}
+    \begin{enumerate}
+        \item il proprietario invia una richiesta di invito (identificativo dell'invitato) a \texttt{POST \url{/groups/{groupId}/invitations}};
+        \item il servizio verifica che il gruppo esista;
+        \item il servizio verifica che l'utente invitato possieda un profilo esistente;
+        \item il dominio verifica che il richiedente sia proprietario del gruppo e che l'invitato non sia già membro;
+        \item viene aggiunta una nuova \texttt{Membership} in stato \texttt{PENDING};
+        \item l'utente invitato, con una richiesta separata a \texttt{POST \url{/groups/{groupId}/invitations/accept}}, accetta l'invito: la \texttt{Membership} transita in stato \texttt{ACCEPTED}.
+    \end{enumerate}
+    \item \textbf{Flussi alternativi:}
+    \begin{itemize}
+        \item \emph{Richiedente non proprietario:} l'operazione viene rifiutata (\texttt{403 Forbidden});
+        \item \emph{Utente invitato senza profilo:} l'operazione viene interrotta (\texttt{404 Not Found});
+        \item \emph{Utente già membro:} l'operazione viene rifiutata (\texttt{409 Conflict});
+        \item \emph{Rifiuto dell'invito:} l'invitato può inviare \texttt{POST \url{/groups/{groupId}/invitations/reject}}, rimuovendo la \texttt{Membership} in sospeso.
+    \end{itemize}
+\end{itemize}
+
+\subsubsection{UC4.1 - Creazione transazione}
+\begin{itemize}
+    \item \textbf{Attori:} Membro del gruppo;
+    \item \textbf{Descrizione:} un membro registra una spesa condivisa, ripartendola tramite percentuali personalizzate tra i membri del gruppo;
+    \item \textbf{Precondizioni:} il richiedente deve essere membro del gruppo; ogni utente indicato nella ripartizione deve anch'esso essere membro del gruppo;
+    \item \textbf{Postcondizioni:} viene creata una nuova \texttt{Transaction}, con il richiedente come pagatore, categoria (facoltativa, predefinita \texttt{OTHER}) e ripartizione salvata sommando esattamente a 100;
+    \item \textbf{Flusso degli eventi principale:}
+    \begin{enumerate}
+        \item il richiedente invia descrizione, importo, categoria facoltativa e ripartizione (percentuale per utente) a \texttt{POST \url{/groups/{groupId}/transactions}};
+        \item il servizio verifica che il gruppo esista e che il richiedente ne sia membro;
+        \item il servizio verifica che ogni utente indicato nella ripartizione sia membro del gruppo;
+        \item il dominio verifica che le percentuali non abbiano utenti duplicati e sommino a 100 (con tolleranza di arrotondamento assorbita automaticamente nell'ultima quota);
+        \item viene creata e salvata la nuova transazione.
+    \end{enumerate}
+    \item \textbf{Flussi alternativi:}
+    \begin{itemize}
+        \item \emph{Richiedente o partecipante non membro:} l'operazione viene interrotta (\texttt{404 Not Found});
+        \item \emph{Percentuali non valide oltre la tolleranza di arrotondamento:} l'operazione viene rifiutata (\texttt{400 Bad Request}).
+    \end{itemize}
+\end{itemize}
+
+\subsubsection{UC5.1 - Aggiornamento (bilancio di gruppo)}
+\begin{itemize}
+    \item \textbf{Attori:} Membro del gruppo;
+    \item \textbf{Descrizione:} un membro richiede il saldo netto, sempre aggiornato, di ciascun membro del gruppo rispetto al registro delle transazioni e dei pagamenti diretti;
+    \item \textbf{Precondizioni:} il richiedente deve essere membro del gruppo;
+    \item \textbf{Postcondizioni:} nessuna: l'operazione è di sola lettura, il risultato viene ricalcolato ad ogni richiesta e non viene salvato;
+    \item \textbf{Flusso degli eventi principale:}
+    \begin{enumerate}
+        \item il richiedente invia \texttt{GET \url{/groups/{groupId}/balance}};
+        \item il servizio verifica che il gruppo esista e che il richiedente ne sia membro;
+        \item il servizio recupera tutte le transazioni e i pagamenti diretti del gruppo;
+        \item viene costruito il registro dei debiti e calcolato il saldo netto di ciascun membro;
+        \item l'elenco dei saldi, uno per membro, viene restituito.
+    \end{enumerate}
+    \item \textbf{Flussi alternativi:}
+    \begin{itemize}
+        \item \emph{Richiedente non membro:} l'operazione viene interrotta (\texttt{404 Not Found}).
+    \end{itemize}
+\end{itemize}
+
+\subsubsection{Altri casi d'uso}
+I restanti casi d'uso applicano schemi già descritti sopra (verifica di appartenenza/proprietà del gruppo, poi lettura, modifica o cancellazione) e sono riassunti di seguito:
+
+\begin{itemize}
+    \item \textbf{UC2.1 - Modifica:} \texttt{PATCH \url{/profile}} aggiorna nome e cognome del profilo dell'utente autenticato;
+    \item \textbf{UC2.2 - Eliminazione:} \texttt{DELETE \url{/profile}} elimina permanentemente il profilo; una successiva lettura restituisce \texttt{404}, senza ricreazione implicita;
+    \item \textbf{UC3.3 - Abbandono:} \texttt{DELETE \url{/groups/{groupId}/members/me}}; se il richiedente è l'unico membro accettato il gruppo viene eliminato, se è il proprietario e restano altri membri il più anziano viene promosso;
+    \item \textbf{UC3.4 - Eliminazione:} \texttt{DELETE \url{/groups/{groupId}}}, riservata al proprietario (\texttt{403} altrimenti);
+    \item \textbf{UC4.2 - Modifica:} \texttt{PATCH \url{/groups/{groupId}/transactions/{transactionId}}}, riservata a chi ha creato la transazione o al proprietario del gruppo, con le stesse verifiche di UC4.1;
+    \item \textbf{UC4.3 - Cancellazione:} \texttt{DELETE \url{/groups/{groupId}/transactions/{transactionId}}} e l'analogo \texttt{DELETE \url{.../settlements/{settlementId}}}, riservate a chi ha creato il movimento o al proprietario del gruppo;
+    \item \textbf{UC5.2 - Dettaglio:} \texttt{GET \url{/groups/{groupId}/balance/me}} restituisce il saldo netto del richiedente e il dettaglio verso ciascun altro membro con saldo non nullo;
+    \item \textbf{UC5.3 - Statistiche:} \texttt{GET \url{/groups/{groupId}/statistics}} restituisce, per ogni categoria con almeno una transazione, l'importo totale e il numero di transazioni, ordinati per importo decrescente.
+\end{itemize}
+
+\subsection{Modello REST}
+La tabella seguente riepiloga gli endpoint esposti da \emph{ExpSplit}, tutti protetti da autenticazione JWT e raggiungibili tramite il \emph{Gateway}.
+
+\begin{table}[H]
+    \centering
+    \begin{tabular}{lll}
+        \hline
+        \textbf{Metodo} & \textbf{Percorso} & \textbf{Caso d'uso} \\
+        \hline
+        POST & /profile & UC2 \\
+        GET & /profile & UC2 \\
+        PATCH & /profile & UC2.1 \\
+        DELETE & /profile & UC2.2 \\
+        \hline
+        POST & /groups & UC3.1 \\
+        GET & /groups/\{groupId\} & UC3 \\
+        POST & /groups/\{groupId\}/invitations & UC3.2 \\
+        POST & /groups/\{groupId\}/invitations/accept & UC3.2 \\
+        POST & /groups/\{groupId\}/invitations/reject & UC3.2 \\
+        DELETE & /groups/\{groupId\}/members/me & UC3.3 \\
+        DELETE & /groups/\{groupId\} & UC3.4 \\
+        \hline
+        POST & /groups/\{groupId\}/transactions & UC4.1 \\
+        GET & /groups/\{groupId\}/transactions & UC4 \\
+        GET & /groups/\{groupId\}/transactions/\{id\} & UC4 \\
+        PATCH & /groups/\{groupId\}/transactions/\{id\} & UC4.2 \\
+        DELETE & /groups/\{groupId\}/transactions/\{id\} & UC4.3 \\
+        \hline
+        POST & /groups/\{groupId\}/settlements & UC4.1 \\
+        GET & /groups/\{groupId\}/settlements & UC4 \\
+        GET & /groups/\{groupId\}/settlements/\{id\} & UC4 \\
+        DELETE & /groups/\{groupId\}/settlements/\{id\} & UC4.3 \\
+        \hline
+        GET & /groups/\{groupId\}/balance & UC5.1 \\
+        GET & /groups/\{groupId\}/balance/me & UC5.2 \\
+        GET & /groups/\{groupId\}/statistics & UC5.3 \\
+        \hline
+    \end{tabular}
+    \caption{Endpoint REST del servizio ExpSplit}
+    \label{tab:expsplit-endpoints}
+\end{table}
+
+\subsection{Testing}
+Ogni caso d'uso è coperto da due livelli di test:
+
+\begin{itemize}
+    \item \textbf{Test unitari} (JUnit): verifica senza persistenza il dominio.
+    \item \textbf{Test di integrazione} (MockMvc + JUnit, database H2 in memoria): verificano l'intero flusso HTTP $\rightarrow$ controller $\rightarrow$ servizio applicativo $\rightarrow$ persistenza per ciascun elemento, inclusi i casi di errore.
+\end{itemize}
+
+Allo stato attuale sono stati creati 113 casi di test. Ogni funzionalità è stata inoltre verificata manualmente con Postman con un database PostgreSQL.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{tests-it2.png}
+    \caption{Test)}
+    \label{fig:tests-it2}
+\end{figure}
