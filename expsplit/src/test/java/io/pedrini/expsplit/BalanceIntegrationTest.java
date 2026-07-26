@@ -110,7 +110,7 @@ class BalanceIntegrationTest {
     private JsonNode balanceNode(ResultActions result, UUID userId) throws Exception {
         JsonNode json = objectMapper.readTree(result.andReturn().getResponse().getContentAsByteArray());
         for (JsonNode entry : json) {
-            if (entry.get("userId").asString().equals(userId.toString())) {
+            if (entry.get("user").get("id").asString().equals(userId.toString())) {
                 return entry;
             }
         }
@@ -149,7 +149,7 @@ class BalanceIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.netAmount").value(-50.00))
                 .andExpect(jsonPath("$.perCounterpart.length()").value(1))
-                .andExpect(jsonPath("$.perCounterpart[0].counterpartId").value(ownerId.toString()))
+                .andExpect(jsonPath("$.perCounterpart[0].counterpart.id").value(ownerId.toString()))
                 .andExpect(jsonPath("$.perCounterpart[0].netAmount").value(-50.00));
     }
 

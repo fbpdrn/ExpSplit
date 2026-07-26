@@ -98,7 +98,7 @@ class GroupIntegrationTest {
     private JsonNode memberNode(ResultActions result, UUID userId) throws Exception {
         JsonNode json = objectMapper.readTree(result.andReturn().getResponse().getContentAsByteArray());
         for (JsonNode member : json.get("members")) {
-            if (member.get("userId").asString().equals(userId.toString())) {
+            if (member.get("user").get("id").asString().equals(userId.toString())) {
                 return member;
             }
         }
@@ -116,7 +116,7 @@ class GroupIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.name").value(GROUP))
                 .andExpect(jsonPath("$.members.length()").value(1))
-                .andExpect(jsonPath("$.members[0].userId").value(ownerId.toString()))
+                .andExpect(jsonPath("$.members[0].user.id").value(ownerId.toString()))
                 .andExpect(jsonPath("$.members[0].role").value("OWNER"))
                 .andExpect(jsonPath("$.members[0].status").value("ACCEPTED"));
     }

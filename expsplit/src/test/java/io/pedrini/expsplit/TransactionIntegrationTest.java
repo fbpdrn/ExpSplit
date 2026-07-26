@@ -135,7 +135,7 @@ class TransactionIntegrationTest {
 
         createTransaction(groupId, ownerId, request)
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.paidBy").value(ownerId.toString()))
+                .andExpect(jsonPath("$.paidBy.id").value(ownerId.toString()))
                 .andExpect(jsonPath("$.amount").value(100.00))
                 .andExpect(jsonPath("$.category").value("OTHER"))
                 .andExpect(jsonPath("$.shares.length()").value(2));

@@ -4,6 +4,8 @@ import io.pedrini.expsplit.adapters.in.web.transaction.dto.CreateTransactionRequ
 import io.pedrini.expsplit.adapters.in.web.transaction.dto.TransactionResponse;
 import io.pedrini.expsplit.adapters.in.web.transaction.dto.TransactionShareRequest;
 import io.pedrini.expsplit.adapters.in.web.transaction.dto.UpdateTransactionRequest;
+import io.pedrini.expsplit.adapters.in.web.user.UserProfileResolver;
+import io.pedrini.expsplit.adapters.in.web.user.dto.UserProfileResponse;
 import io.pedrini.expsplit.domain.group.model.GroupId;
 import io.pedrini.expsplit.domain.transaction.model.Amount;
 import io.pedrini.expsplit.domain.transaction.model.SharePercentage;
@@ -30,8 +32,11 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 
 @RestController
@@ -43,17 +48,20 @@ public class TransactionController {
     private final ListTransactionsUseCase listTransactionsUseCase;
     private final UpdateTransactionUseCase updateTransactionUseCase;
     private final DeleteTransactionUseCase deleteTransactionUseCase;
+    private final UserProfileResolver userProfileResolver;
 
     public TransactionController(CreateTransactionUseCase createTransactionUseCase,
                                   GetTransactionUseCase getTransactionUseCase,
                                   ListTransactionsUseCase listTransactionsUseCase,
                                   UpdateTransactionUseCase updateTransactionUseCase,
-                                  DeleteTransactionUseCase deleteTransactionUseCase) {
+                                  DeleteTransactionUseCase deleteTransactionUseCase,
+                                  UserProfileResolver userProfileResolver) {
         this.createTransactionUseCase = createTransactionUseCase;
         this.getTransactionUseCase = getTransactionUseCase;
         this.listTransactionsUseCase = listTransactionsUseCase;
         this.updateTransactionUseCase = updateTransactionUseCase;
         this.deleteTransactionUseCase = deleteTransactionUseCase;
+        this.userProfileResolver = userProfileResolver;
     }
 
     @PostMapping
@@ -62,22 +70,21 @@ public class TransactionController {
         Transaction transaction = createTransactionUseCase.create(
                 new GroupId(groupId), userId(jwt),
                 new TransactionDescription(request.description()), new Amount(request.amount()), request.category(), shares(request.shares()));
-        return ResponseEntity.ok(TransactionResponse.from(transaction));
+        return ResponseEntity.ok(toResponse(transaction));
     }
 
     @GetMapping
     public ResponseEntity<List<TransactionResponse>> list(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID groupId) {
-        List<TransactionResponse> transactions = listTransactionsUseCase.list(new GroupId(groupId), userId(jwt)).stream()
-                .map(TransactionResponse::from)
-                .toList();
-        return ResponseEntity.ok(transactions);
+        List<Transaction> transactions = listTransactionsUseCase.list(new GroupId(groupId), userId(jwt));
+        Map<UserProfileId, UserProfileResponse> users = userProfileResolver.resolve(userIds(transactions));
+        return ResponseEntity.ok(transactions.stream().map(transaction -> TransactionResponse.from(transaction, users)).toList());
     }
 
     @GetMapping("/{transactionId}")
     public ResponseEntity<TransactionResponse> get(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID groupId,
                                                      @PathVariable UUID transactionId) {
         Transaction transaction = getTransactionUseCase.get(new GroupId(groupId), new TransactionId(transactionId), userId(jwt));
-        return ResponseEntity.ok(TransactionResponse.from(transaction));
+        return ResponseEntity.ok(toResponse(transaction));
     }
 
     @PatchMapping("/{transactionId}")
@@ -87,7 +94,7 @@ public class TransactionController {
         Transaction transaction = updateTransactionUseCase.update(
                 new GroupId(groupId), new TransactionId(transactionId), userId(jwt),
                 new TransactionDescription(request.description()), new Amount(request.amount()), request.category(), shares(request.shares()));
-        return ResponseEntity.ok(TransactionResponse.from(transaction));
+        return ResponseEntity.ok(toResponse(transaction));
     }
 
     @DeleteMapping("/{transactionId}")
@@ -105,5 +112,18 @@ public class TransactionController {
 
     private UserProfileId userId(Jwt jwt) {
         return new UserProfileId(UUID.fromString(Objects.requireNonNull(jwt.getSubject())));
+    }
+
+    private TransactionResponse toResponse(Transaction transaction) {
+        return TransactionResponse.from(transaction, userProfileResolver.resolve(userIds(List.of(transaction))));
+    }
+
+    private Set<UserProfileId> userIds(List<Transaction> transactions) {
+        Set<UserProfileId> ids = new HashSet<>();
+        for (Transaction transaction : transactions) {
+            ids.add(transaction.paidBy());
+            transaction.shares().forEach(share -> ids.add(share.userId()));
+        }
+        return ids;
     }
 }

@@ -128,8 +128,8 @@ class SettlementIntegrationTest {
 
         createSettlement(groupId, memberId, ownerId, "20")
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.payerId").value(memberId.toString()))
-                .andExpect(jsonPath("$.payeeId").value(ownerId.toString()))
+                .andExpect(jsonPath("$.payer.id").value(memberId.toString()))
+                .andExpect(jsonPath("$.payee.id").value(ownerId.toString()))
                 .andExpect(jsonPath("$.amount").value(20.00))
                 .andExpect(jsonPath("$.category").value("OTHER"));
     }

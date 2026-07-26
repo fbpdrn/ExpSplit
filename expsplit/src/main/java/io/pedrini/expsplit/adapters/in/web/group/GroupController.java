@@ -3,7 +3,9 @@ package io.pedrini.expsplit.adapters.in.web.group;
 import io.pedrini.expsplit.adapters.in.web.group.dto.CreateGroupRequest;
 import io.pedrini.expsplit.adapters.in.web.group.dto.GroupResponse;
 import io.pedrini.expsplit.adapters.in.web.group.dto.InviteMemberRequest;
+import io.pedrini.expsplit.adapters.in.web.user.UserProfileResolver;
 import io.pedrini.expsplit.domain.group.model.Group;
+import io.pedrini.expsplit.domain.group.model.Membership;
 import io.pedrini.expsplit.domain.group.model.GroupId;
 import io.pedrini.expsplit.domain.group.model.GroupName;
 import io.pedrini.expsplit.domain.group.port.in.AcceptInvitationUseCase;
@@ -26,6 +28,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 
@@ -40,6 +43,7 @@ public class GroupController {
     private final RejectInvitationUseCase rejectInvitationUseCase;
     private final LeaveGroupUseCase leaveGroupUseCase;
     private final DeleteGroupUseCase deleteGroupUseCase;
+    private final UserProfileResolver userProfileResolver;
 
     public GroupController(CreateGroupUseCase createGroupUseCase,
                             GetGroupUseCase getGroupUseCase,
@@ -47,7 +51,8 @@ public class GroupController {
                             AcceptInvitationUseCase acceptInvitationUseCase,
                             RejectInvitationUseCase rejectInvitationUseCase,
                             LeaveGroupUseCase leaveGroupUseCase,
-                            DeleteGroupUseCase deleteGroupUseCase) {
+                            DeleteGroupUseCase deleteGroupUseCase,
+                            UserProfileResolver userProfileResolver) {
         this.createGroupUseCase = createGroupUseCase;
         this.getGroupUseCase = getGroupUseCase;
         this.inviteMemberUseCase = inviteMemberUseCase;
@@ -55,36 +60,37 @@ public class GroupController {
         this.rejectInvitationUseCase = rejectInvitationUseCase;
         this.leaveGroupUseCase = leaveGroupUseCase;
         this.deleteGroupUseCase = deleteGroupUseCase;
+        this.userProfileResolver = userProfileResolver;
     }
 
     @PostMapping
     public ResponseEntity<GroupResponse> create(@AuthenticationPrincipal Jwt jwt, @Valid @RequestBody CreateGroupRequest request) {
         Group group = createGroupUseCase.create(new GroupName(request.name()), userId(jwt));
-        return ResponseEntity.ok(GroupResponse.from(group));
+        return ResponseEntity.ok(toResponse(group));
     }
 
     @GetMapping("/{groupId}")
     public ResponseEntity<GroupResponse> get(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID groupId) {
         Group group = getGroupUseCase.get(new GroupId(groupId), userId(jwt));
-        return ResponseEntity.ok(GroupResponse.from(group));
+        return ResponseEntity.ok(toResponse(group));
     }
 
     @PostMapping("/{groupId}/invitations")
     public ResponseEntity<GroupResponse> invite(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID groupId, @Valid @RequestBody InviteMemberRequest request) {
         Group group = inviteMemberUseCase.invite(new GroupId(groupId), userId(jwt), new UserProfileId(request.userId()));
-        return ResponseEntity.ok(GroupResponse.from(group));
+        return ResponseEntity.ok(toResponse(group));
     }
 
     @PostMapping("/{groupId}/invitations/accept")
     public ResponseEntity<GroupResponse> accept(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID groupId) {
         Group group = acceptInvitationUseCase.accept(new GroupId(groupId), userId(jwt));
-        return ResponseEntity.ok(GroupResponse.from(group));
+        return ResponseEntity.ok(toResponse(group));
     }
 
     @PostMapping("/{groupId}/invitations/reject")
     public ResponseEntity<GroupResponse> reject(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID groupId) {
         Group group = rejectInvitationUseCase.reject(new GroupId(groupId), userId(jwt));
-        return ResponseEntity.ok(GroupResponse.from(group));
+        return ResponseEntity.ok(toResponse(group));
     }
 
     @DeleteMapping("/{groupId}/members/me")
@@ -101,5 +107,10 @@ public class GroupController {
 
     private UserProfileId userId(Jwt jwt) {
         return new UserProfileId(UUID.fromString(Objects.requireNonNull(jwt.getSubject())));
+    }
+
+    private GroupResponse toResponse(Group group) {
+        List<UserProfileId> memberIds = group.members().stream().map(Membership::userId).toList();
+        return GroupResponse.from(group, userProfileResolver.resolve(memberIds));
     }
 }
