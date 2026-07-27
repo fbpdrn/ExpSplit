@@ -55,7 +55,7 @@ enum APIProfile {
         case notFound
     }
 
-    struct GroupSummary: Decodable, Identifiable {
+    struct GroupSummary: Decodable, Identifiable, Hashable {
         let id: UUID
         let name: String
     }
