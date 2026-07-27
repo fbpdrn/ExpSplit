@@ -43,6 +43,19 @@ build/
 .junie/
 *.iml
 
+### Xcode ###
+xcuserdata/
+*.xcuserstate
+*.xcscmblueprint
+*.xccheckout
+DerivedData/
+*.moved-aside
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM
+.swiftpm/
+
 ### Secrets ###
 **/data/
 .env
