@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 struct HomeView: View {
     let onLogout: () -> Void
@@ -78,8 +79,10 @@ struct HomeView: View {
             Text(needsProfile ? "Completa il profilo" : "Modifica profilo")
                 .font(.largeTitle)
 
-            ESTextField(title: "Nome", text: $firstName)
-            ESTextField(title: "Cognome", text: $lastName)
+            VStack(spacing: 12) {
+                ESTextField(title: "Nome", text: $firstName)
+                ESTextField(title: "Cognome", text: $lastName)
+            }
 
             if let errorMessage {
                 Text(errorMessage)
@@ -96,6 +99,30 @@ struct HomeView: View {
                 Button("Annulla") {
                     isEditingProfile = false
                 }
+            }
+
+            if let profile {
+                Divider()
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("ID utente")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+
+                    HStack {
+                        Text(profile.id.uuidString)
+                            .font(.footnote.monospaced())
+
+                        Spacer()
+
+                        Button {
+                            UIPasteboard.general.string = profile.id.uuidString
+                        } label: {
+                            Image(systemName: "doc.on.doc")
+                        }
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
         .padding()
