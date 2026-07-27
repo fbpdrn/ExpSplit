@@ -1,9 +1,12 @@
 import SwiftUI
 
 struct HomeView: View {
+    let onLogout: () -> Void
+
     @State private var isLoading = true
     @State private var needsProfile = false
-    @State private var groups: [APIProfile.GroupSummary] = []
+    @State private var isEditingProfile = false
+    @State private var profile: APIProfile.ProfileResponse?
     @State private var errorMessage: String?
 
     @State private var firstName = ""
@@ -14,7 +17,7 @@ struct HomeView: View {
         Group {
             if isLoading {
                 ProgressView()
-            } else if needsProfile {
+            } else if needsProfile || isEditingProfile {
                 profileForm
             } else {
                 groupList
@@ -27,26 +30,52 @@ struct HomeView: View {
 
     private var groupList: some View {
         VStack(spacing: 12) {
+            HStack(spacing: 12) {
+                Button {
+                    firstName = profile?.firstName ?? ""
+                    lastName = profile?.lastName ?? ""
+                    isEditingProfile = true
+                } label: {
+                    Image(systemName: "person")
+                        .padding(10)
+                        .background(Circle().fill(Color(.secondarySystemBackground)))
+                }
+
+                Button(role: .destructive) {
+                    AuthStorage.deleteToken()
+                    onLogout()
+                } label: {
+                    Image(systemName: "rectangle.portrait.and.arrow.right")
+                        .padding(10)
+                        .background(Circle().fill(Color(.secondarySystemBackground)))
+                }
+
+                Spacer()
+            }
+            .padding(.horizontal)
+
             if let errorMessage {
                 Text(errorMessage)
                     .foregroundStyle(.red)
                     .font(.footnote)
             }
 
-            if groups.isEmpty {
-                Text("Nessun gruppo")
-                    .foregroundStyle(.secondary)
-            } else {
+            if let groups = profile?.groups, !groups.isEmpty {
                 List(groups) { group in
                     Text(group.name)
                 }
+            } else {
+                Text("Nessun gruppo")
+                    .foregroundStyle(.secondary)
+                Spacer()
             }
         }
+        .padding(.top)
     }
 
     private var profileForm: some View {
         VStack(spacing: 16) {
-            Text("Completa il profilo")
+            Text(needsProfile ? "Completa il profilo" : "Modifica profilo")
                 .font(.largeTitle)
 
             ESTextField(title: "Nome", text: $firstName)
@@ -62,6 +91,12 @@ struct HomeView: View {
                 Task { await saveProfile() }
             }
             .disabled(isSavingProfile || firstName.isEmpty || lastName.isEmpty)
+
+            if isEditingProfile {
+                Button("Annulla") {
+                    isEditingProfile = false
+                }
+            }
         }
         .padding()
     }
@@ -77,8 +112,8 @@ struct HomeView: View {
         defer { isLoading = false }
 
         do {
-            let profile = try await APIProfile.get(token: token)
-            groups = profile.groups
+            let loaded = try await APIProfile.get(token: token)
+            profile = loaded
             needsProfile = false
         } catch APIProfile.ProfileError.notFound {
             needsProfile = true
@@ -95,9 +130,12 @@ struct HomeView: View {
         defer { isSavingProfile = false }
 
         do {
-            try await APIProfile.create(token: token)
+            if needsProfile {
+                try await APIProfile.create(token: token)
+            }
             try await APIProfile.update(token: token, firstName: firstName, lastName: lastName)
             needsProfile = false
+            isEditingProfile = false
             await loadProfile()
         } catch {
             errorMessage = "Salvataggio non riuscito."
@@ -106,5 +144,5 @@ struct HomeView: View {
 }
 
 #Preview {
-    HomeView()
+    HomeView(onLogout: {})
 }

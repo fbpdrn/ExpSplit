@@ -27,7 +27,7 @@ struct ContentView: View {
                 onSwitchToLogin: { screen = .login }
             )
         case .home:
-            HomeView()
+            HomeView(onLogout: { screen = .login })
         }
     }
 }
