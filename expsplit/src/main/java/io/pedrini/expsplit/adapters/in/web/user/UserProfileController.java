@@ -2,6 +2,8 @@ package io.pedrini.expsplit.adapters.in.web.user;
 
 import io.pedrini.expsplit.adapters.in.web.user.dto.UpdateUserProfileRequest;
 import io.pedrini.expsplit.adapters.in.web.user.dto.UserProfileResponse;
+import io.pedrini.expsplit.domain.group.model.Group;
+import io.pedrini.expsplit.domain.group.port.in.ListMyGroupsUseCase;
 import io.pedrini.expsplit.domain.user.model.FirstName;
 import io.pedrini.expsplit.domain.user.model.LastName;
 import io.pedrini.expsplit.domain.user.model.UserProfile;
@@ -23,6 +25,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 
@@ -36,15 +39,18 @@ public class UserProfileController {
     private final CreateUserProfileUseCase createUserProfileUseCase;
     private final UpdateUserProfileUseCase updateUserProfileUseCase;
     private final DeleteUserProfileUseCase deleteUserProfileUseCase;
+    private final ListMyGroupsUseCase listMyGroupsUseCase;
 
     public UserProfileController(GetUserProfileUseCase getUserProfileUseCase,
                                   CreateUserProfileUseCase createUserProfileUseCase,
                                   UpdateUserProfileUseCase updateUserProfileUseCase,
-                                  DeleteUserProfileUseCase deleteUserProfileUseCase) {
+                                  DeleteUserProfileUseCase deleteUserProfileUseCase,
+                                  ListMyGroupsUseCase listMyGroupsUseCase) {
         this.getUserProfileUseCase = getUserProfileUseCase;
         this.createUserProfileUseCase = createUserProfileUseCase;
         this.updateUserProfileUseCase = updateUserProfileUseCase;
         this.deleteUserProfileUseCase = deleteUserProfileUseCase;
+        this.listMyGroupsUseCase = listMyGroupsUseCase;
     }
 
     @PostMapping
@@ -56,7 +62,8 @@ public class UserProfileController {
     @GetMapping
     public ResponseEntity<UserProfileResponse> get(@AuthenticationPrincipal Jwt jwt) {
         UserProfile userProfile = getUserProfileUseCase.get(id(jwt));
-        return ResponseEntity.ok(UserProfileResponse.from(userProfile));
+        List<Group> groups = listMyGroupsUseCase.listMyGroups(id(jwt));
+        return ResponseEntity.ok(UserProfileResponse.from(userProfile, groups));
     }
 
     @PatchMapping

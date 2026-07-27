@@ -11,4 +11,7 @@ interface GroupJpaRepository extends JpaRepository<GroupEntity, UUID> {
 
     @Query("SELECT DISTINCT g FROM GroupEntity g JOIN g.members m WHERE m.userId = :userId AND m.status = 'PENDING'")
     List<GroupEntity> findPendingInvitations(@Param("userId") UUID userId);
+
+    @Query("SELECT DISTINCT g FROM GroupEntity g JOIN g.members m WHERE m.userId = :userId AND m.status = 'ACCEPTED'")
+    List<GroupEntity> findAcceptedGroups(@Param("userId") UUID userId);
 }

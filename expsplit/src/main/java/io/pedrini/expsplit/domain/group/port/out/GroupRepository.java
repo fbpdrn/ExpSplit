@@ -15,5 +15,7 @@ public interface GroupRepository {
 
     List<Group> findPendingInvitations(UserProfileId userId);
 
+    List<Group> findAcceptedGroups(UserProfileId userId);
+
     void deleteById(GroupId id);
 }

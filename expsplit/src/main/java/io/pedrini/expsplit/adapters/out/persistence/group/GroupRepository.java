@@ -34,6 +34,11 @@ class GroupRepository implements io.pedrini.expsplit.domain.group.port.out.Group
     }
 
     @Override
+    public List<Group> findAcceptedGroups(UserProfileId userId) {
+        return jpaRepository.findAcceptedGroups(userId.id()).stream().map(GroupMapper::toDomain).toList();
+    }
+
+    @Override
     public void deleteById(GroupId id) {
         jpaRepository.deleteById(id.id());
     }

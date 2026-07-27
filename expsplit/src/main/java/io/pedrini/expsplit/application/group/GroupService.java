@@ -11,6 +11,7 @@ import io.pedrini.expsplit.domain.group.port.in.DeleteGroupUseCase;
 import io.pedrini.expsplit.domain.group.port.in.GetGroupUseCase;
 import io.pedrini.expsplit.domain.group.port.in.InviteMemberUseCase;
 import io.pedrini.expsplit.domain.group.port.in.LeaveGroupUseCase;
+import io.pedrini.expsplit.domain.group.port.in.ListMyGroupsUseCase;
 import io.pedrini.expsplit.domain.group.port.in.ListPendingInvitationsUseCase;
 import io.pedrini.expsplit.domain.group.port.in.RejectInvitationUseCase;
 import io.pedrini.expsplit.domain.group.port.out.GroupRepository;
@@ -21,7 +22,8 @@ import io.pedrini.expsplit.domain.user.port.out.UserProfileRepository;
 import java.util.List;
 
 public class GroupService implements CreateGroupUseCase, GetGroupUseCase, InviteMemberUseCase,
-        AcceptInvitationUseCase, RejectInvitationUseCase, LeaveGroupUseCase, DeleteGroupUseCase, ListPendingInvitationsUseCase {
+        AcceptInvitationUseCase, RejectInvitationUseCase, LeaveGroupUseCase, DeleteGroupUseCase, ListPendingInvitationsUseCase,
+        ListMyGroupsUseCase {
 
     private final GroupRepository groupRepository;
     private final UserProfileRepository userProfileRepository;
@@ -94,6 +96,11 @@ public class GroupService implements CreateGroupUseCase, GetGroupUseCase, Invite
     @Override
     public List<Group> list(UserProfileId userId) {
         return groupRepository.findPendingInvitations(userId);
+    }
+
+    @Override
+    public List<Group> listMyGroups(UserProfileId userId) {
+        return groupRepository.findAcceptedGroups(userId);
     }
 
     private Group load(GroupId groupId) {
