@@ -7,6 +7,13 @@ enum APIGroup {
         let email: String
         let firstName: String?
         let lastName: String?
+
+        var displayName: String {
+            if let firstName, let lastName {
+                return "\(firstName) \(lastName)"
+            }
+            return email
+        }
     }
 
     struct Membership: Decodable, Identifiable {

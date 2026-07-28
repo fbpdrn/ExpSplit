@@ -20,6 +20,10 @@ struct GroupDetailView: View {
     @State private var isInviting = false
     @State private var inviteError: String?
 
+    @State private var showAddMenu = false
+    @State private var showTransactionSheet = false
+    @State private var showSettlementSheet = false
+
     var body: some View {
         VStack(spacing: 0) {
             Picker("Sezione", selection: $selectedTab) {
@@ -59,10 +63,33 @@ struct GroupDetailView: View {
                         Image(systemName: "person.badge.plus")
                     }
                 }
+            } else if selectedTab == .transactions {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button {
+                        showAddMenu = true
+                    } label: {
+                        Image(systemName: "plus")
+                    }
+                }
             }
+        }
+        .confirmationDialog("Aggiungi", isPresented: $showAddMenu) {
+            Button("Nuova transazione") { showTransactionSheet = true }
+            Button("Nuovo pagamento") { showSettlementSheet = true }
+            Button("Annulla", role: .cancel) {}
         }
         .sheet(isPresented: $showInviteSheet) {
             inviteSheet
+        }
+        .sheet(isPresented: $showTransactionSheet) {
+            TransactionFormView(groupId: groupId, members: group?.members ?? []) {
+                Task { await load() }
+            }
+        }
+        .sheet(isPresented: $showSettlementSheet) {
+            SettlementFormView(groupId: groupId, members: group?.members ?? []) {
+                Task { await load() }
+            }
         }
         .task {
             await load()
