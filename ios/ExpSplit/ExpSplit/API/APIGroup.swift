@@ -50,6 +50,21 @@ enum APIGroup {
         }
     }
 
+    static func create(name: String, token: String) async throws -> GroupDetail {
+        var request = URLRequest(url: APIClient.baseURL.appendingPathComponent("groups"))
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        request.httpBody = try JSONEncoder().encode(CreateGroupRequest(name: name))
+
+        let (data, response) = try await APIClient.session.data(for: request)
+        guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
+            throw URLError(.badServerResponse)
+        }
+
+        return try APIClient.jsonDecoder.decode(GroupDetail.self, from: data)
+    }
+
     static func get(groupId: UUID, token: String) async throws -> GroupDetail {
         var request = URLRequest(url: APIClient.baseURL.appendingPathComponent("groups/\(groupId.uuidString)"))
         request.httpMethod = "GET"
@@ -110,5 +125,9 @@ enum APIGroup {
 
     private struct InviteRequest: Encodable {
         let userId: UUID
+    }
+
+    private struct CreateGroupRequest: Encodable {
+        let name: String
     }
 }

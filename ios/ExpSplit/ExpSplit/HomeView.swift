@@ -18,6 +18,11 @@ struct HomeView: View {
     @State private var selectedTab: HomeTab = .groups
     @State private var invitations: [APIInvitation.PendingInvitation] = []
 
+    @State private var showCreateGroupSheet = false
+    @State private var newGroupName = ""
+    @State private var isCreatingGroup = false
+    @State private var createGroupError: String?
+
     var body: some View {
         Group {
             if isLoading {
@@ -69,6 +74,16 @@ struct HomeView: View {
                 }
 
                 Spacer()
+
+                Button {
+                    newGroupName = ""
+                    createGroupError = nil
+                    showCreateGroupSheet = true
+                } label: {
+                    Image(systemName: "plus")
+                        .padding(10)
+                        .background(Circle().fill(Color(.secondarySystemBackground)))
+                }
             }
             .padding(.horizontal)
 
@@ -96,9 +111,38 @@ struct HomeView: View {
         .navigationDestination(for: APIProfile.GroupSummary.self) { group in
             GroupDetailView(groupId: group.id, groupName: group.name, currentUserId: profile?.id)
         }
+        .sheet(isPresented: $showCreateGroupSheet) {
+            createGroupSheet
+        }
         .task {
             await loadInvitations()
         }
+    }
+
+    private var createGroupSheet: some View {
+        VStack(spacing: 16) {
+            Text("Nuovo gruppo")
+                .font(.title2)
+
+            ESTextField(title: "Nome gruppo", text: $newGroupName)
+
+            if let createGroupError {
+                Text(createGroupError)
+                    .foregroundStyle(.red)
+                    .font(.footnote)
+            }
+
+            ESButton(title: "Crea", isLoading: isCreatingGroup) {
+                Task { await createGroup() }
+            }
+            .disabled(isCreatingGroup || newGroupName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+
+            Button("Annulla") {
+                showCreateGroupSheet = false
+            }
+        }
+        .padding()
+        .presentationDetents([.medium])
     }
 
     private var groupsList: some View {
@@ -189,6 +233,25 @@ struct HomeView: View {
             await loadProfile()
         } catch {
             errorMessage = "Impossibile aggiornare l'invito."
+        }
+    }
+
+    private func createGroup() async {
+        guard let token = AuthStorage.loadToken() else {
+            createGroupError = "Sessione non valida."
+            return
+        }
+
+        createGroupError = nil
+        isCreatingGroup = true
+        defer { isCreatingGroup = false }
+
+        do {
+            _ = try await APIGroup.create(name: newGroupName, token: token)
+            showCreateGroupSheet = false
+            await loadProfile()
+        } catch {
+            createGroupError = "Creazione non riuscita."
         }
     }
 }
