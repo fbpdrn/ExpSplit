@@ -38,6 +38,17 @@ enum APISettlement {
         }
     }
 
+    static func delete(groupId: UUID, settlementId: UUID, token: String) async throws {
+        var request = URLRequest(url: APIClient.baseURL.appendingPathComponent("groups/\(groupId.uuidString)/settlements/\(settlementId.uuidString)"))
+        request.httpMethod = "DELETE"
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+
+        let (_, response) = try await APIClient.session.data(for: request)
+        guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
+            throw URLError(.badServerResponse)
+        }
+    }
+
     private struct CreateRequest: Encodable {
         let payeeId: UUID
         let amount: Decimal

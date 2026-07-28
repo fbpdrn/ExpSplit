@@ -234,6 +234,15 @@ struct GroupDetailView: View {
                 .font(.footnote)
                 .foregroundStyle(.secondary)
         }
+        .swipeActions {
+            if canModify(settlement) {
+                Button(role: .destructive) {
+                    Task { await deleteSettlement(settlement) }
+                } label: {
+                    Label("Elimina", systemImage: "trash")
+                }
+            }
+        }
     }
 
     private func categoryDisplayName(_ raw: String) -> String {
@@ -312,6 +321,12 @@ struct GroupDetailView: View {
         return group?.members.first(where: { $0.user.id == currentUserId })?.role == "OWNER"
     }
 
+    private func canModify(_ settlement: APISettlement.Settlement) -> Bool {
+        guard let currentUserId else { return false }
+        if settlement.payer.id == currentUserId || settlement.payee.id == currentUserId { return true }
+        return group?.members.first(where: { $0.user.id == currentUserId })?.role == "OWNER"
+    }
+
     private func displayName(for user: APIGroup.UserSummary) -> String {
         if let firstName = user.firstName, let lastName = user.lastName {
             return "\(firstName) \(lastName)"
@@ -354,6 +369,16 @@ struct GroupDetailView: View {
             await load()
         } catch {
             errorMessage = "Impossibile eliminare la transazione."
+        }
+    }
+
+    private func deleteSettlement(_ settlement: APISettlement.Settlement) async {
+        guard let token = AuthStorage.loadToken() else { return }
+        do {
+            try await APISettlement.delete(groupId: groupId, settlementId: settlement.id, token: token)
+            await load()
+        } catch {
+            errorMessage = "Impossibile eliminare il pagamento."
         }
     }
 
