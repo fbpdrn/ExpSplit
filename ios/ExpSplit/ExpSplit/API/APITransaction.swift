@@ -74,6 +74,20 @@ enum APITransaction {
         }
     }
 
+    static func update(groupId: UUID, transactionId: UUID, description: String, amount: Decimal, category: Category?,
+                        shares: [ShareInput], token: String) async throws {
+        var request = URLRequest(url: APIClient.baseURL.appendingPathComponent("groups/\(groupId.uuidString)/transactions/\(transactionId.uuidString)"))
+        request.httpMethod = "PATCH"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        request.httpBody = try JSONEncoder().encode(CreateRequest(description: description, amount: amount, category: category, shares: shares))
+
+        let (_, response) = try await APIClient.session.data(for: request)
+        guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
+            throw URLError(.badServerResponse)
+        }
+    }
+
     private struct CreateRequest: Encodable {
         let description: String
         let amount: Decimal

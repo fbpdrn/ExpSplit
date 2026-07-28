@@ -3,17 +3,44 @@ import SwiftUI
 struct TransactionFormView: View {
     let groupId: UUID
     let members: [APIGroup.Membership]
-    let onCreated: () -> Void
+    let existingTransaction: APITransaction.Transaction?
+    let onSaved: () -> Void
 
     @Environment(\.dismiss) private var dismiss
 
-    @State private var description = ""
-    @State private var amount = ""
-    @State private var category: APITransaction.Category = .other
-    @State private var selectedMemberIds: Set<UUID> = []
-    @State private var shares: [UUID: Double] = [:]
+    @State private var description: String
+    @State private var amount: String
+    @State private var category: APITransaction.Category
+    @State private var selectedMemberIds: Set<UUID>
+    @State private var shares: [UUID: Double]
     @State private var isSaving = false
     @State private var errorMessage: String?
+
+    init(groupId: UUID, members: [APIGroup.Membership], existingTransaction: APITransaction.Transaction? = nil,
+         onSaved: @escaping () -> Void) {
+        self.groupId = groupId
+        self.members = members
+        self.existingTransaction = existingTransaction
+        self.onSaved = onSaved
+
+        if let transaction = existingTransaction {
+            _description = State(initialValue: transaction.description)
+            _amount = State(initialValue: "\(transaction.amount)")
+            _category = State(initialValue: APITransaction.Category(rawValue: transaction.category) ?? .other)
+            _selectedMemberIds = State(initialValue: Set(transaction.shares.map { $0.user.id }))
+            var initialShares: [UUID: Double] = [:]
+            for share in transaction.shares {
+                initialShares[share.user.id] = (share.percentage as NSDecimalNumber).doubleValue
+            }
+            _shares = State(initialValue: initialShares)
+        } else {
+            _description = State(initialValue: "")
+            _amount = State(initialValue: "")
+            _category = State(initialValue: .other)
+            _selectedMemberIds = State(initialValue: [])
+            _shares = State(initialValue: [:])
+        }
+    }
 
     var body: some View {
         NavigationStack {
@@ -56,7 +83,7 @@ struct TransactionFormView: View {
                         .foregroundStyle(.red)
                 }
             }
-            .navigationTitle("Nuova transazione")
+            .navigationTitle(existingTransaction == nil ? "Nuova transazione" : "Modifica transazione")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Annulla") { dismiss() }
@@ -170,16 +197,22 @@ struct TransactionFormView: View {
         defer { isSaving = false }
 
         do {
-            try await APITransaction.create(groupId: groupId, description: description, amount: amountValue,
-                                             category: category, shares: shareInputs, token: token)
-            onCreated()
+            if let existingTransaction {
+                try await APITransaction.update(groupId: groupId, transactionId: existingTransaction.id,
+                                                 description: description, amount: amountValue,
+                                                 category: category, shares: shareInputs, token: token)
+            } else {
+                try await APITransaction.create(groupId: groupId, description: description, amount: amountValue,
+                                                 category: category, shares: shareInputs, token: token)
+            }
+            onSaved()
             dismiss()
         } catch {
-            errorMessage = "Creazione non riuscita."
+            errorMessage = existingTransaction == nil ? "Creazione non riuscita." : "Modifica non riuscita."
         }
     }
 }
 
 #Preview {
-    TransactionFormView(groupId: UUID(), members: [], onCreated: {})
+    TransactionFormView(groupId: UUID(), members: [], onSaved: {})
 }

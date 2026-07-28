@@ -23,6 +23,7 @@ struct GroupDetailView: View {
     @State private var showAddMenu = false
     @State private var showTransactionSheet = false
     @State private var showSettlementSheet = false
+    @State private var editingTransaction: APITransaction.Transaction?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -83,6 +84,11 @@ struct GroupDetailView: View {
         }
         .sheet(isPresented: $showTransactionSheet) {
             TransactionFormView(groupId: groupId, members: group?.members ?? []) {
+                Task { await load() }
+            }
+        }
+        .sheet(item: $editingTransaction) { transaction in
+            TransactionFormView(groupId: groupId, members: group?.members ?? [], existingTransaction: transaction) {
                 Task { await load() }
             }
         }
@@ -148,6 +154,10 @@ struct GroupDetailView: View {
                         Text("\(displayName(for: transaction.paidBy)) · \(transaction.amount) · \(transaction.category)")
                             .font(.footnote)
                             .foregroundStyle(.secondary)
+                    }
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        editingTransaction = transaction
                     }
                 }
             }
