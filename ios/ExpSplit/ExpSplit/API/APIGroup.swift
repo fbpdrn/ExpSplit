@@ -89,6 +89,25 @@ enum APIGroup {
         }
     }
 
+    static func acceptInvitation(groupId: UUID, token: String) async throws {
+        try await respondToInvitation(groupId: groupId, path: "accept", token: token)
+    }
+
+    static func rejectInvitation(groupId: UUID, token: String) async throws {
+        try await respondToInvitation(groupId: groupId, path: "reject", token: token)
+    }
+
+    private static func respondToInvitation(groupId: UUID, path: String, token: String) async throws {
+        var request = URLRequest(url: APIClient.baseURL.appendingPathComponent("groups/\(groupId.uuidString)/invitations/\(path)"))
+        request.httpMethod = "POST"
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+
+        let (_, response) = try await APIClient.session.data(for: request)
+        guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
+            throw URLError(.badServerResponse)
+        }
+    }
+
     private struct InviteRequest: Encodable {
         let userId: UUID
     }
