@@ -69,7 +69,7 @@ struct TransactionFormView: View {
                                 HStack {
                                     Text(member.user.displayName)
                                     Spacer()
-                                    Text("\(Int((shares[member.user.id] ?? 0).rounded()))%")
+                                    Text(shareDisplayText(for: member.user.id))
                                         .foregroundStyle(.secondary)
                                 }
                                 Slider(value: bindingForShare(member.user.id), in: 0...100)
@@ -96,6 +96,15 @@ struct TransactionFormView: View {
                 }
             }
         }
+    }
+
+    private func shareDisplayText(for userId: UUID) -> String {
+        let percentage = Int((shares[userId] ?? 0).rounded())
+        guard let amountValue = Decimal(string: amount) else {
+            return "\(percentage)%"
+        }
+        let share = amountValue * Decimal(percentage) / 100
+        return "\(share) € (\(percentage)%)"
     }
 
     private func bindingForSelection(_ userId: UUID) -> Binding<Bool> {
