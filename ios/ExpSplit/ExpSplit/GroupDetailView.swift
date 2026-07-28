@@ -15,6 +15,11 @@ struct GroupDetailView: View {
     @State private var isLoading = true
     @State private var errorMessage: String?
 
+    @State private var showInviteSheet = false
+    @State private var inviteUserId = ""
+    @State private var isInviting = false
+    @State private var inviteError: String?
+
     var body: some View {
         VStack(spacing: 0) {
             Picker("Sezione", selection: $selectedTab) {
@@ -43,9 +48,51 @@ struct GroupDetailView: View {
             }
         }
         .navigationTitle(groupName)
+        .toolbar {
+            if selectedTab == .members {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button {
+                        inviteUserId = ""
+                        inviteError = nil
+                        showInviteSheet = true
+                    } label: {
+                        Image(systemName: "person.badge.plus")
+                    }
+                }
+            }
+        }
+        .sheet(isPresented: $showInviteSheet) {
+            inviteSheet
+        }
         .task {
             await load()
         }
+    }
+
+    private var inviteSheet: some View {
+        VStack(spacing: 16) {
+            Text("Invita un utente")
+                .font(.title2)
+
+            ESTextField(title: "ID utente", text: $inviteUserId)
+
+            if let inviteError {
+                Text(inviteError)
+                    .foregroundStyle(.red)
+                    .font(.footnote)
+            }
+
+            ESButton(title: "Invita", isLoading: isInviting) {
+                Task { await sendInvite() }
+            }
+            .disabled(isInviting || inviteUserId.isEmpty)
+
+            Button("Annulla") {
+                showInviteSheet = false
+            }
+        }
+        .padding()
+        .presentationDetents([.medium])
     }
 
     private var membersList: some View {
@@ -112,6 +159,29 @@ struct GroupDetailView: View {
             transactions = try await transactionList
         } catch {
             errorMessage = "Impossibile caricare il gruppo."
+        }
+    }
+
+    private func sendInvite() async {
+        guard let token = AuthStorage.loadToken() else {
+            inviteError = "Sessione non valida."
+            return
+        }
+        guard let userId = UUID(uuidString: inviteUserId.trimmingCharacters(in: .whitespacesAndNewlines)) else {
+            inviteError = "ID utente non valido."
+            return
+        }
+
+        inviteError = nil
+        isInviting = true
+        defer { isInviting = false }
+
+        do {
+            try await APIGroup.invite(groupId: groupId, userId: userId, token: token)
+            showInviteSheet = false
+            await load()
+        } catch {
+            inviteError = (error as? LocalizedError)?.errorDescription ?? "Invito non riuscito."
         }
     }
 }

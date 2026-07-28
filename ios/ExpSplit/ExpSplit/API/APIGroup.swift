@@ -26,6 +26,23 @@ enum APIGroup {
         let createdAt: Date
     }
 
+    enum InviteError: LocalizedError {
+        case notOwner
+        case userNotFound
+        case alreadyMember
+
+        var errorDescription: String? {
+            switch self {
+            case .notOwner:
+                return "Solo il proprietario del gruppo può invitare nuovi membri."
+            case .userNotFound:
+                return "Nessun utente trovato con questo ID."
+            case .alreadyMember:
+                return "L'utente è già membro del gruppo."
+            }
+        }
+    }
+
     static func get(groupId: UUID, token: String) async throws -> GroupDetail {
         var request = URLRequest(url: APIClient.baseURL.appendingPathComponent("groups/\(groupId.uuidString)"))
         request.httpMethod = "GET"
@@ -37,5 +54,35 @@ enum APIGroup {
         }
 
         return try APIClient.jsonDecoder.decode(GroupDetail.self, from: data)
+    }
+
+    static func invite(groupId: UUID, userId: UUID, token: String) async throws {
+        var request = URLRequest(url: APIClient.baseURL.appendingPathComponent("groups/\(groupId.uuidString)/invitations"))
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        request.httpBody = try JSONEncoder().encode(InviteRequest(userId: userId))
+
+        let (_, response) = try await APIClient.session.data(for: request)
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw URLError(.badServerResponse)
+        }
+
+        switch httpResponse.statusCode {
+        case 200:
+            return
+        case 403:
+            throw InviteError.notOwner
+        case 404:
+            throw InviteError.userNotFound
+        case 409:
+            throw InviteError.alreadyMember
+        default:
+            throw URLError(.badServerResponse)
+        }
+    }
+
+    private struct InviteRequest: Encodable {
+        let userId: UUID
     }
 }
