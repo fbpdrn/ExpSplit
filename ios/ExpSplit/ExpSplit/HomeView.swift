@@ -82,7 +82,7 @@ struct HomeView: View {
         }
         .padding(.top)
         .navigationDestination(for: APIProfile.GroupSummary.self) { group in
-            GroupDetailView(groupId: group.id, groupName: group.name)
+            GroupDetailView(groupId: group.id, groupName: group.name, currentUserId: profile?.id)
         }
     }
 

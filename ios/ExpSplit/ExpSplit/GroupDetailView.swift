@@ -3,15 +3,21 @@ import SwiftUI
 struct GroupDetailView: View {
     let groupId: UUID
     let groupName: String
+    let currentUserId: UUID?
 
     private enum Tab {
-        case members
         case transactions
+        case members
+        case balance
+        case statistics
     }
 
-    @State private var selectedTab: Tab = .members
+    @State private var selectedTab: Tab = .transactions
     @State private var group: APIGroup.GroupDetail?
     @State private var transactions: [APITransaction.Transaction] = []
+    @State private var balance: [APIBalance.GroupBalanceEntry] = []
+    @State private var myBalance: APIBalance.MyBalance?
+    @State private var statistics: [APIStatistics.CategoryStat] = []
     @State private var isLoading = true
     @State private var errorMessage: String?
 
@@ -28,8 +34,10 @@ struct GroupDetailView: View {
     var body: some View {
         VStack(spacing: 0) {
             Picker("Sezione", selection: $selectedTab) {
-                Text("Membri").tag(Tab.members)
                 Text("Transazioni").tag(Tab.transactions)
+                Text("Membri").tag(Tab.members)
+                Text("Bilancio").tag(Tab.balance)
+                Text("Statistiche").tag(Tab.statistics)
             }
             .pickerStyle(.segmented)
             .padding()
@@ -45,10 +53,14 @@ struct GroupDetailView: View {
                 Spacer()
             } else {
                 switch selectedTab {
-                case .members:
-                    membersList
                 case .transactions:
                     transactionsList
+                case .members:
+                    membersList
+                case .balance:
+                    balanceView
+                case .statistics:
+                    statisticsList
                 }
             }
         }
@@ -157,7 +169,67 @@ struct GroupDetailView: View {
                     }
                     .contentShape(Rectangle())
                     .onTapGesture {
-                        editingTransaction = transaction
+                        if canModify(transaction) {
+                            editingTransaction = transaction
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private var balanceView: some View {
+        List {
+            if let myBalance {
+                Section("Il mio saldo") {
+                    HStack {
+                        Text("Totale")
+                        Spacer()
+                        Text("\(myBalance.netAmount)")
+                            .foregroundStyle(myBalance.netAmount >= 0 ? .green : .red)
+                    }
+                    ForEach(myBalance.perCounterpart) { comparison in
+                        HStack {
+                            Text(displayName(for: comparison.counterpart))
+                            Spacer()
+                            Text("\(comparison.netAmount)")
+                                .foregroundStyle(comparison.netAmount >= 0 ? .green : .red)
+                        }
+                    }
+                }
+            }
+
+            Section("Saldi del gruppo") {
+                ForEach(balance) { entry in
+                    HStack {
+                        Text(displayName(for: entry.user))
+                        Spacer()
+                        Text("\(entry.netAmount)")
+                            .foregroundStyle(entry.netAmount >= 0 ? .green : .red)
+                    }
+                }
+            }
+        }
+    }
+
+    private var statisticsList: some View {
+        Group {
+            if statistics.isEmpty {
+                Spacer()
+                Text("Nessuna statistica disponibile")
+                    .foregroundStyle(.secondary)
+                Spacer()
+            } else {
+                List(statistics) { stat in
+                    HStack {
+                        Text(stat.category.displayName)
+                        Spacer()
+                        VStack(alignment: .trailing) {
+                            Text("\(stat.totalAmount) €")
+                            Text("\(stat.transactionCount) transazioni")
+                                .font(.footnote)
+                                .foregroundStyle(.secondary)
+                        }
                     }
                 }
             }
@@ -170,6 +242,12 @@ struct GroupDetailView: View {
 
     private func statusColor(_ status: String) -> Color {
         status == "ACCEPTED" ? .green : .yellow
+    }
+
+    private func canModify(_ transaction: APITransaction.Transaction) -> Bool {
+        guard let currentUserId else { return false }
+        if transaction.paidBy.id == currentUserId { return true }
+        return group?.members.first(where: { $0.user.id == currentUserId })?.role == "OWNER"
     }
 
     private func displayName(for user: APIGroup.UserSummary) -> String {
@@ -192,8 +270,14 @@ struct GroupDetailView: View {
         do {
             async let groupDetail = APIGroup.get(groupId: groupId, token: token)
             async let transactionList = APITransaction.list(groupId: groupId, token: token)
+            async let balanceList = APIBalance.list(groupId: groupId, token: token)
+            async let myBalanceResult = APIBalance.me(groupId: groupId, token: token)
+            async let statisticsList = APIStatistics.list(groupId: groupId, token: token)
             group = try await groupDetail
             transactions = try await transactionList
+            balance = try await balanceList
+            myBalance = try await myBalanceResult
+            statistics = try await statisticsList
         } catch {
             errorMessage = "Impossibile caricare il gruppo."
         }
@@ -225,6 +309,6 @@ struct GroupDetailView: View {
 
 #Preview {
     NavigationStack {
-        GroupDetailView(groupId: UUID(), groupName: "Gruppo")
+        GroupDetailView(groupId: UUID(), groupName: "Gruppo", currentUserId: nil)
     }
 }
