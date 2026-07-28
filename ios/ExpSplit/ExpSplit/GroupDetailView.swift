@@ -52,9 +52,10 @@ struct GroupDetailView: View {
         List(group?.members ?? []) { member in
             VStack(alignment: .leading, spacing: 6) {
                 Text(displayName(for: member.user))
-                Text("\(member.role) · \(member.status)")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
+                HStack(spacing: 6) {
+                    ESBadge(text: member.role, color: roleColor(member.role))
+                    ESBadge(text: member.status, color: statusColor(member.status))
+                }
             }
         }
     }
@@ -77,6 +78,14 @@ struct GroupDetailView: View {
                 }
             }
         }
+    }
+
+    private func roleColor(_ role: String) -> Color {
+        role == "OWNER" ? .orange : .blue
+    }
+
+    private func statusColor(_ status: String) -> Color {
+        status == "ACCEPTED" ? .green : .yellow
     }
 
     private func displayName(for user: APIGroup.UserSummary) -> String {
