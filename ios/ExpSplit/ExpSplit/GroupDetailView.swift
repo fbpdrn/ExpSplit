@@ -173,6 +173,15 @@ struct GroupDetailView: View {
                             editingTransaction = transaction
                         }
                     }
+                    .swipeActions {
+                        if canModify(transaction) {
+                            Button(role: .destructive) {
+                                Task { await deleteTransaction(transaction) }
+                            } label: {
+                                Label("Elimina", systemImage: "trash")
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -280,6 +289,16 @@ struct GroupDetailView: View {
             statistics = try await statisticsList
         } catch {
             errorMessage = "Impossibile caricare il gruppo."
+        }
+    }
+
+    private func deleteTransaction(_ transaction: APITransaction.Transaction) async {
+        guard let token = AuthStorage.loadToken() else { return }
+        do {
+            try await APITransaction.delete(groupId: groupId, transactionId: transaction.id, token: token)
+            await load()
+        } catch {
+            errorMessage = "Impossibile eliminare la transazione."
         }
     }
 
