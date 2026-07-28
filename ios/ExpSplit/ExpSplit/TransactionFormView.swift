@@ -92,7 +92,7 @@ struct TransactionFormView: View {
                     Button("Salva") {
                         Task { await save() }
                     }
-                    .disabled(isSaving || description.isEmpty || amount.isEmpty || selectedMemberIds.isEmpty)
+                    .disabled(isSaving || description.isEmpty || amount.isEmpty || selectedMemberIds.count < 2)
                 }
             }
         }
@@ -196,8 +196,8 @@ struct TransactionFormView: View {
             return APITransaction.ShareInput(userId: id, percentage: Decimal(percentage))
         }
 
-        guard !shareInputs.isEmpty else {
-            errorMessage = "Seleziona almeno un partecipante."
+        guard shareInputs.count >= 2 else {
+            errorMessage = "Servono almeno due partecipanti."
             return
         }
 
