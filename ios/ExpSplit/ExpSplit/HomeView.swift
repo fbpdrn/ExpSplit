@@ -35,6 +35,12 @@ struct HomeView: View {
     }
 
     private var groupList: some View {
+        NavigationStack {
+            groupListContent
+        }
+    }
+
+    private var groupListContent: some View {
         VStack(spacing: 12) {
             HStack(spacing: 12) {
                 Button {
@@ -66,7 +72,7 @@ struct HomeView: View {
 
             if let groups = profile?.groups, !groups.isEmpty {
                 List(groups) { group in
-                    Text(group.name)
+                    NavigationLink(group.name, value: group)
                 }
             } else {
                 Text("Nessun gruppo")
@@ -75,6 +81,9 @@ struct HomeView: View {
             }
         }
         .padding(.top)
+        .navigationDestination(for: APIProfile.GroupSummary.self) { group in
+            GroupDetailView(groupId: group.id, groupName: group.name)
+        }
     }
 
     private func loadProfile() async {
