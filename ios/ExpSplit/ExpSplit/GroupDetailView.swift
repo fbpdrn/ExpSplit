@@ -13,8 +13,28 @@ struct GroupDetailView: View {
     }
 
     @State private var selectedTab: Tab = .transactions
+    private enum Movement: Identifiable {
+        case transaction(APITransaction.Transaction)
+        case settlement(APISettlement.Settlement)
+
+        var id: String {
+            switch self {
+            case .transaction(let transaction): return "t-\(transaction.id)"
+            case .settlement(let settlement): return "s-\(settlement.id)"
+            }
+        }
+
+        var date: Date {
+            switch self {
+            case .transaction(let transaction): return transaction.createdAt
+            case .settlement(let settlement): return settlement.createdAt
+            }
+        }
+    }
+
     @State private var group: APIGroup.GroupDetail?
     @State private var transactions: [APITransaction.Transaction] = []
+    @State private var settlements: [APISettlement.Settlement] = []
     @State private var balance: [APIBalance.GroupBalanceEntry] = []
     @State private var myBalance: APIBalance.MyBalance?
     @State private var statistics: [APIStatistics.CategoryStat] = []
@@ -152,39 +172,72 @@ struct GroupDetailView: View {
         }
     }
 
+    private var movements: [Movement] {
+        let all: [Movement] = transactions.map { .transaction($0) } + settlements.map { .settlement($0) }
+        return all.sorted { $0.date > $1.date }
+    }
+
     private var transactionsList: some View {
         Group {
-            if transactions.isEmpty {
+            if movements.isEmpty {
                 Spacer()
                 Text("Nessuna transazione")
                     .foregroundStyle(.secondary)
                 Spacer()
             } else {
-                List(transactions) { transaction in
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(transaction.description)
-                        Text("\(displayName(for: transaction.paidBy)) · \(transaction.amount) · \(transaction.category)")
-                            .font(.footnote)
-                            .foregroundStyle(.secondary)
-                    }
-                    .contentShape(Rectangle())
-                    .onTapGesture {
-                        if canModify(transaction) {
-                            editingTransaction = transaction
-                        }
-                    }
-                    .swipeActions {
-                        if canModify(transaction) {
-                            Button(role: .destructive) {
-                                Task { await deleteTransaction(transaction) }
-                            } label: {
-                                Label("Elimina", systemImage: "trash")
-                            }
-                        }
+                List(movements) { movement in
+                    switch movement {
+                    case .transaction(let transaction):
+                        transactionRow(transaction)
+                    case .settlement(let settlement):
+                        settlementRow(settlement)
                     }
                 }
             }
         }
+    }
+
+    @ViewBuilder
+    private func transactionRow(_ transaction: APITransaction.Transaction) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(transaction.description)
+            Text("\(displayName(for: transaction.paidBy)) · \(transaction.amount) · \(categoryDisplayName(transaction.category))")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+        }
+        .contentShape(Rectangle())
+        .onTapGesture {
+            if canModify(transaction) {
+                editingTransaction = transaction
+            }
+        }
+        .swipeActions {
+            if canModify(transaction) {
+                Button(role: .destructive) {
+                    Task { await deleteTransaction(transaction) }
+                } label: {
+                    Label("Elimina", systemImage: "trash")
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func settlementRow(_ settlement: APISettlement.Settlement) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(spacing: 4) {
+                Image(systemName: "arrow.right")
+                    .foregroundStyle(.secondary)
+                Text("\(displayName(for: settlement.payer)) → \(displayName(for: settlement.payee))")
+            }
+            Text("\(settlement.amount) €")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+        }
+    }
+
+    private func categoryDisplayName(_ raw: String) -> String {
+        APITransaction.Category(rawValue: raw)?.displayName ?? raw
     }
 
     private var balanceView: some View {
@@ -279,11 +332,13 @@ struct GroupDetailView: View {
         do {
             async let groupDetail = APIGroup.get(groupId: groupId, token: token)
             async let transactionList = APITransaction.list(groupId: groupId, token: token)
+            async let settlementList = APISettlement.list(groupId: groupId, token: token)
             async let balanceList = APIBalance.list(groupId: groupId, token: token)
             async let myBalanceResult = APIBalance.me(groupId: groupId, token: token)
             async let statisticsList = APIStatistics.list(groupId: groupId, token: token)
             group = try await groupDetail
             transactions = try await transactionList
+            settlements = try await settlementList
             balance = try await balanceList
             myBalance = try await myBalanceResult
             statistics = try await statisticsList

@@ -2,6 +2,29 @@ import Foundation
 
 enum APISettlement {
 
+    struct Settlement: Decodable, Identifiable {
+        let id: UUID
+        let groupId: UUID
+        let payer: APIGroup.UserSummary
+        let payee: APIGroup.UserSummary
+        let amount: Decimal
+        let category: APITransaction.Category?
+        let createdAt: Date
+    }
+
+    static func list(groupId: UUID, token: String) async throws -> [Settlement] {
+        var request = URLRequest(url: APIClient.baseURL.appendingPathComponent("groups/\(groupId.uuidString)/settlements"))
+        request.httpMethod = "GET"
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+
+        let (data, response) = try await APIClient.session.data(for: request)
+        guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
+            throw URLError(.badServerResponse)
+        }
+
+        return try APIClient.jsonDecoder.decode([Settlement].self, from: data)
+    }
+
     static func create(groupId: UUID, payeeId: UUID, amount: Decimal, category: APITransaction.Category?, token: String) async throws {
         var request = URLRequest(url: APIClient.baseURL.appendingPathComponent("groups/\(groupId.uuidString)/settlements"))
         request.httpMethod = "POST"
