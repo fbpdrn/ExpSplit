@@ -109,7 +109,16 @@ struct HomeView: View {
         }
         .padding(.top)
         .navigationDestination(for: APIProfile.GroupSummary.self) { group in
-            GroupDetailView(groupId: group.id, groupName: group.name, currentUserId: profile?.id)
+            GroupDetailView(groupId: group.id, groupName: group.name, currentUserId: profile?.id) {
+                guard let currentProfile = profile else { return }
+                profile = APIProfile.ProfileResponse(
+                    id: currentProfile.id,
+                    email: currentProfile.email,
+                    firstName: currentProfile.firstName,
+                    lastName: currentProfile.lastName,
+                    groups: currentProfile.groups.filter { $0.id != group.id }
+                )
+            }
         }
         .sheet(isPresented: $showCreateGroupSheet) {
             createGroupSheet

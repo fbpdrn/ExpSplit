@@ -4,6 +4,7 @@ struct TransactionFormView: View {
     let groupId: UUID
     let members: [APIGroup.Membership]
     let existingTransaction: APITransaction.Transaction?
+    let canEdit: Bool
     let onSaved: () -> Void
 
     @Environment(\.dismiss) private var dismiss
@@ -16,11 +17,12 @@ struct TransactionFormView: View {
     @State private var isSaving = false
     @State private var errorMessage: String?
 
-    init(groupId: UUID, members: [APIGroup.Membership], existingTransaction: APITransaction.Transaction? = nil,
+    init(groupId: UUID, members: [APIGroup.Membership], existingTransaction: APITransaction.Transaction? = nil, canEdit: Bool = true,
          onSaved: @escaping () -> Void) {
         self.groupId = groupId
         self.members = members
         self.existingTransaction = existingTransaction
+        self.canEdit = canEdit
         self.onSaved = onSaved
 
         if let transaction = existingTransaction {
@@ -42,37 +44,51 @@ struct TransactionFormView: View {
         }
     }
 
+    private var hasFormerParticipants: Bool {
+        guard let existingTransaction else { return false }
+        let memberIds = Set(members.map { $0.user.id })
+        return existingTransaction.shares.contains { !memberIds.contains($0.user.id) }
+    }
+
+    private var isReadOnly: Bool {
+        existingTransaction != nil && (!canEdit || hasFormerParticipants)
+    }
+
     var body: some View {
         NavigationStack {
             Form {
-                Section("Dettagli") {
-                    TextField("Descrizione", text: $description)
-                    TextField("Importo", text: $amount)
-                        .keyboardType(.decimalPad)
-                    Picker("Categoria", selection: $category) {
-                        ForEach(APITransaction.Category.allCases) { category in
-                            Text(category.displayName).tag(category)
+                if isReadOnly, let transaction = existingTransaction {
+                    transactionDetails(transaction)
+                } else {
+                    Section("Dettagli") {
+                        TextField("Descrizione", text: $description)
+                        TextField("Importo", text: $amount)
+                            .keyboardType(.decimalPad)
+                        Picker("Categoria", selection: $category) {
+                            ForEach(APITransaction.Category.allCases) { category in
+                                Text(category.displayName).tag(category)
+                            }
                         }
                     }
-                }
 
-                Section("Partecipanti") {
-                    ForEach(members) { member in
-                        Toggle(member.user.displayName, isOn: bindingForSelection(member.user.id))
+                    Section("Partecipanti") {
+                        ForEach(members) { member in
+                            Toggle(member.user.displayName, isOn: bindingForSelection(member.user.id))
+                        }
                     }
-                }
 
-                if !selectedMemberIds.isEmpty {
-                    Section("Ripartizione") {
-                        ForEach(members.filter { selectedMemberIds.contains($0.user.id) }) { member in
-                            VStack(alignment: .leading, spacing: 4) {
-                                HStack {
-                                    Text(member.user.displayName)
-                                    Spacer()
-                                    Text(shareDisplayText(for: member.user.id))
-                                        .foregroundStyle(.secondary)
+                    if !selectedMemberIds.isEmpty {
+                        Section("Ripartizione") {
+                            ForEach(members.filter { selectedMemberIds.contains($0.user.id) }) { member in
+                                VStack(alignment: .leading, spacing: 4) {
+                                    HStack {
+                                        Text(member.user.displayName)
+                                        Spacer()
+                                        Text(shareDisplayText(for: member.user.id))
+                                            .foregroundStyle(.secondary)
+                                    }
+                                    Slider(value: bindingForShare(member.user.id), in: 0...100)
                                 }
-                                Slider(value: bindingForShare(member.user.id), in: 0...100)
                             }
                         }
                     }
@@ -83,16 +99,54 @@ struct TransactionFormView: View {
                         .foregroundStyle(.red)
                 }
             }
-            .navigationTitle(existingTransaction == nil ? "Nuova transazione" : "Modifica transazione")
+            .navigationTitle(isReadOnly ? "Dettaglio transazione" : (existingTransaction == nil ? "Nuova transazione" : "Modifica transazione"))
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Annulla") { dismiss() }
+                    Button(isReadOnly ? "Chiudi" : "Annulla") { dismiss() }
                 }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Salva") {
-                        Task { await save() }
+                if !isReadOnly {
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button("Salva") {
+                            Task { await save() }
+                        }
+                        .disabled(isSaving || description.isEmpty || amount.isEmpty || selectedMemberIds.count < 2)
                     }
-                    .disabled(isSaving || description.isEmpty || amount.isEmpty || selectedMemberIds.count < 2)
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func transactionDetails(_ transaction: APITransaction.Transaction) -> some View {
+        if hasFormerParticipants {
+            Section {
+                Text("Non puoi modificare questa transazione perché alcuni partecipanti non fanno più parte del gruppo. La ripartizione originale resta consultabile.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            }
+        }
+
+        Section("Dettagli") {
+            LabeledContent("Descrizione", value: transaction.description)
+            LabeledContent("Pagatore", value: transaction.paidBy.displayName)
+            LabeledContent("Importo", value: transaction.amount.formatted(.currency(code: "EUR")))
+            LabeledContent("Categoria", value: APITransaction.Category(rawValue: transaction.category)?.displayName ?? transaction.category)
+            LabeledContent("Data", value: transaction.createdAt.formatted(date: .abbreviated, time: .shortened))
+        }
+
+        Section("Ripartizione originale") {
+            ForEach(transaction.shares) { share in
+                HStack {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(share.user.displayName)
+                        if !members.contains(where: { $0.user.id == share.user.id }) {
+                            Text("Uscito dal gruppo")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    Spacer()
+                    Text("\(share.percentage.formatted(.number.precision(.fractionLength(0...2))))%")
                 }
             }
         }
@@ -182,6 +236,7 @@ struct TransactionFormView: View {
     }
 
     private func save() async {
+        guard !isReadOnly else { return }
         guard let token = AuthStorage.loadToken() else {
             errorMessage = "Sessione non valida."
             return

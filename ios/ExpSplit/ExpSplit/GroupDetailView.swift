@@ -4,6 +4,9 @@ struct GroupDetailView: View {
     let groupId: UUID
     let groupName: String
     let currentUserId: UUID?
+    var onLeave: () -> Void = {}
+
+    @Environment(\.dismiss) private var dismiss
 
     private enum Tab {
         case transactions
@@ -40,6 +43,9 @@ struct GroupDetailView: View {
     @State private var statistics: [APIStatistics.CategoryStat] = []
     @State private var isLoading = true
     @State private var errorMessage: String?
+    @State private var showLeaveConfirmation = false
+    @State private var isLeaving = false
+    @State private var leaveError: String?
 
     @State private var showInviteSheet = false
     @State private var inviteUserId = ""
@@ -61,6 +67,13 @@ struct GroupDetailView: View {
             }
             .pickerStyle(.segmented)
             .padding()
+
+            if let leaveError {
+                Text(leaveError)
+                    .foregroundStyle(.red)
+                    .font(.footnote)
+                    .padding(.horizontal)
+            }
 
             if isLoading {
                 Spacer()
@@ -85,7 +98,21 @@ struct GroupDetailView: View {
             }
         }
         .navigationTitle(groupName)
+        .navigationBarBackButtonHidden(isLeaving)
         .toolbar {
+            ToolbarItem(placement: .navigationBarTrailing) {
+                Button {
+                    showLeaveConfirmation = true
+                } label: {
+                    if isLeaving {
+                        ProgressView()
+                    } else {
+                        Label("Esci dal gruppo", systemImage: "rectangle.portrait.and.arrow.right")
+                    }
+                }
+                .disabled(isLoading || isLeaving)
+                .accessibilityLabel("Esci dal gruppo")
+            }
             if selectedTab == .members {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button {
@@ -106,6 +133,15 @@ struct GroupDetailView: View {
                 }
             }
         }
+        .disabled(isLeaving)
+        .alert("Uscire dal gruppo?", isPresented: $showLeaveConfirmation) {
+            Button("Annulla", role: .cancel) {}
+            Button("Esci", role: .destructive) {
+                Task { await leaveGroup() }
+            }
+        } message: {
+            Text("Non avrai più accesso al gruppo. Se sei il proprietario, il ruolo passerà al membro più anziano. Se sei l'ultimo membro attivo, il gruppo verrà eliminato.")
+        }
         .confirmationDialog("Aggiungi", isPresented: $showAddMenu) {
             Button("Nuova transazione") { showTransactionSheet = true }
             Button("Nuovo pagamento") { showSettlementSheet = true }
@@ -120,7 +156,7 @@ struct GroupDetailView: View {
             }
         }
         .sheet(item: $editingTransaction) { transaction in
-            TransactionFormView(groupId: groupId, members: group?.members ?? [], existingTransaction: transaction) {
+            TransactionFormView(groupId: groupId, members: group?.members ?? [], existingTransaction: transaction, canEdit: canModify(transaction)) {
                 Task { await load() }
             }
         }
@@ -207,9 +243,7 @@ struct GroupDetailView: View {
         }
         .contentShape(Rectangle())
         .onTapGesture {
-            if canModify(transaction) {
-                editingTransaction = transaction
-            }
+            editingTransaction = transaction
         }
         .swipeActions {
             if canModify(transaction) {
@@ -251,7 +285,10 @@ struct GroupDetailView: View {
 
     private var balanceView: some View {
         List {
+            let formerBalances = APIBalance.formerMemberBalances(currentBalances: balance, transactions: transactions, settlements: settlements)
             if let myBalance {
+                let formerComparisons = APIBalance.formerMemberBalances(currentBalances: balance, transactions: transactions,
+                                                                         settlements: settlements, relativeTo: myBalance.user.id)
                 Section("Il mio saldo") {
                     HStack {
                         Text("Totale")
@@ -267,10 +304,23 @@ struct GroupDetailView: View {
                                 .foregroundStyle(comparison.netAmount >= 0 ? .green : .red)
                         }
                     }
+                    ForEach(formerComparisons) { entry in
+                        HStack {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(displayName(for: entry.user))
+                                Text("Uscito dal gruppo")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                            Spacer()
+                            Text("\(entry.netAmount)")
+                                .foregroundStyle(entry.netAmount >= 0 ? .green : .red)
+                        }
+                    }
                 }
             }
 
-            Section("Saldi del gruppo") {
+            Section {
                 ForEach(balance) { entry in
                     HStack {
                         Text(displayName(for: entry.user))
@@ -279,6 +329,23 @@ struct GroupDetailView: View {
                             .foregroundStyle(entry.netAmount >= 0 ? .green : .red)
                     }
                 }
+                ForEach(formerBalances) { entry in
+                    HStack {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(displayName(for: entry.user))
+                            Text("Uscito dal gruppo")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        Spacer()
+                        Text("\(entry.netAmount)")
+                            .foregroundStyle(entry.netAmount >= 0 ? .green : .red)
+                    }
+                }
+            } header: {
+                Text("Saldi del gruppo")
+            } footer: {
+                Text("Sono inclusi anche gli ex membri presenti nelle spese e nei rimborsi. Uscire dal gruppo non cancella i debiti e i crediti registrati.")
             }
         }
     }
@@ -379,6 +446,26 @@ struct GroupDetailView: View {
             await load()
         } catch {
             errorMessage = "Impossibile eliminare il pagamento."
+        }
+    }
+
+    private func leaveGroup() async {
+        guard !isLeaving else { return }
+        guard let token = AuthStorage.loadToken() else {
+            leaveError = "Sessione non valida. Accedi nuovamente."
+            return
+        }
+
+        leaveError = nil
+        isLeaving = true
+        defer { isLeaving = false }
+
+        do {
+            try await APIGroup.leave(groupId: groupId, token: token)
+            dismiss()
+            onLeave()
+        } catch {
+            leaveError = "Impossibile uscire dal gruppo. Riprova."
         }
     }
 
