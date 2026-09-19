@@ -57,6 +57,11 @@ struct GroupDetailView: View {
     @State private var showSettlementSheet = false
     @State private var editingTransaction: APITransaction.Transaction?
 
+    private var isCurrentUserOwner: Bool {
+        guard let currentUserId else { return false }
+        return group?.members.first(where: { $0.user.id == currentUserId })?.role == "OWNER"
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             Picker("Sezione", selection: $selectedTab) {
@@ -113,7 +118,7 @@ struct GroupDetailView: View {
                 .disabled(isLoading || isLeaving)
                 .accessibilityLabel("Esci dal gruppo")
             }
-            if selectedTab == .members {
+            if selectedTab == .members && isCurrentUserOwner {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button {
                         inviteUserId = ""
@@ -385,13 +390,12 @@ struct GroupDetailView: View {
     private func canModify(_ transaction: APITransaction.Transaction) -> Bool {
         guard let currentUserId else { return false }
         if transaction.paidBy.id == currentUserId { return true }
-        return group?.members.first(where: { $0.user.id == currentUserId })?.role == "OWNER"
+        return isCurrentUserOwner
     }
 
     private func canModify(_ settlement: APISettlement.Settlement) -> Bool {
         guard let currentUserId else { return false }
-        if settlement.payer.id == currentUserId || settlement.payee.id == currentUserId { return true }
-        return group?.members.first(where: { $0.user.id == currentUserId })?.role == "OWNER"
+        return settlement.payer.id == currentUserId || isCurrentUserOwner
     }
 
     private func displayName(for user: APIGroup.UserSummary) -> String {
