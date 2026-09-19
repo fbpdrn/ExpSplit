@@ -94,7 +94,7 @@ enum APITransaction {
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
 
         let (_, response) = try await APIClient.session.data(for: request)
-        guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
+        guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 204 else {
             throw URLError(.badServerResponse)
         }
     }
