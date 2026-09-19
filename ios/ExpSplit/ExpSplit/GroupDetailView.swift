@@ -56,6 +56,7 @@ struct GroupDetailView: View {
     @State private var showTransactionSheet = false
     @State private var showSettlementSheet = false
     @State private var editingTransaction: APITransaction.Transaction?
+    @State private var selectedSettlement: APISettlement.Settlement?
 
     private var isCurrentUserOwner: Bool {
         guard let currentUserId else { return false }
@@ -170,6 +171,9 @@ struct GroupDetailView: View {
                 Task { await load() }
             }
         }
+        .sheet(item: $selectedSettlement) { settlement in
+            SettlementDetailView(settlement: settlement)
+        }
         .task {
             await load()
         }
@@ -272,6 +276,10 @@ struct GroupDetailView: View {
             Text("\(settlement.amount) €")
                 .font(.footnote)
                 .foregroundStyle(.secondary)
+        }
+        .contentShape(Rectangle())
+        .onTapGesture {
+            selectedSettlement = settlement
         }
         .swipeActions {
             if canModify(settlement) {
