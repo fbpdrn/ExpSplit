@@ -1,0 +1,30 @@
+% Iterazione 4
+\section{Iterazione 4}
+
+\subsection{Introduzione}
+L'iterazione 4 introduce un'applicazione iOS sviluppata in \emph{SwiftUI}, attraverso cui si testano i casi d'uso realizzati nelle iterazioni precedenti. Il client comunica con i servizi tramite le API REST esposte dal \emph{Gateway} e implementa le funzionalità di autenticazione, gestione dei gruppi e condivisione delle spese.
+
+L'obiettivo dell'iterazione è lo sviluppo di un client con tecnologia diversa e la verifica delle funzionalità proposte.
+
+\subsection{Ruolo nell'architettura esagonale}
+L'applicazione è un \emph{client esterno} che comunica esclusivamente tramite richieste HTTP con i controller REST con scambio di dati in formato JSON. Il client non ha accesso o conoscenza della struttura del servizio e del database.
+
+\subsection{Organizzazione del client}
+Il codice iOS è organizzato come di seguito:
+\begin{itemize}
+    \item \textbf{Viste SwiftUI:} presentano i dati, raccolgono gli input e gestiscono navigazione, stato di caricamento e messaggi di errore;
+    \item \textbf{Moduli \texttt{API}:} definiscono i dati scambiati con il servizio e le operazioni HTTP per le diverse funzionalità, utilizzando chiamate asincrone;
+    \item \textbf{\texttt{APIClient}:} centralizza l'indirizzo del Gateway, la sessione di rete e la configurazione della decodifica JSON;
+    \item \textbf{\texttt{AuthStorage}:} conserva il token JWT nel \emph{Keychain}. Il token viene inviato con le richieste e rimosso localmente al logout.
+\end{itemize}
+
+Il client esegue controlli sui campi e facilita la composizione delle richieste, ad esempio distribuendo le percentuali di una spesa tra i partecipanti selezionati. La verifica delle autorizzazioni e della validità delle operazioni rimane comunque responsabilità del servizio.
+
+Il client è stato volutamente progettato per essere semplice e utilizzato come strumento di verifica delle funzionalità - non è stato adottato uno stile architetturale tipico delle applicazione iOS.
+
+\subsection{Funzionalità}
+L'interfaccia permette registrazione e accesso, compilazione e modifica del profilo, creazione e consultazione dei gruppi, gestione degli inviti e uscita da un gruppo. Nel dettaglio di un gruppo sono disponibili spese, pagamenti diretti, membri, bilanci e statistiche per categoria. Queste operazioni sono descritte nel dettaglio nei casi d'uso nelle iterazioni precedenti.
+
+\subsection{Verifica e limiti}
+La verifica dell'integrazione deve coprire almeno un flusso completo: accesso, creazione di un gruppo, invito e accettazione da parte di un secondo utente, inserimento di una spesa e consultazione dei bilanci.
+Altri casi d'uso secondari o interazioni più complesse sono state omesse per semplicità.
