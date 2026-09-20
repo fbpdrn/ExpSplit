@@ -244,12 +244,16 @@ struct GroupDetailView: View {
 
     @ViewBuilder
     private func transactionRow(_ transaction: APITransaction.Transaction) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(transaction.description)
-            Text("\(displayName(for: transaction.paidBy)) · \(transaction.amount) · \(categoryDisplayName(transaction.category))")
-                .font(.footnote)
-                .foregroundStyle(.secondary)
+        HStack(spacing: 12) {
+            ESMovementIcon(kind: .transaction)
+            VStack(alignment: .leading, spacing: 4) {
+                Text(transaction.description)
+                Text("\(displayName(for: transaction.paidBy)) · \(transaction.amount) · \(categoryDisplayName(transaction.category))")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            }
         }
+        .accessibilityElement(children: .combine)
         .contentShape(Rectangle())
         .onTapGesture {
             editingTransaction = transaction
@@ -267,16 +271,16 @@ struct GroupDetailView: View {
 
     @ViewBuilder
     private func settlementRow(_ settlement: APISettlement.Settlement) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            HStack(spacing: 4) {
-                Image(systemName: "arrow.right")
+        HStack(spacing: 12) {
+            ESMovementIcon(kind: .settlement)
+            VStack(alignment: .leading, spacing: 4) {
+                Text("\(displayName(for: settlement.payer)) a \(displayName(for: settlement.payee))")
+                Text("\(settlement.amount) €")
+                    .font(.footnote)
                     .foregroundStyle(.secondary)
-                Text("\(displayName(for: settlement.payer)) → \(displayName(for: settlement.payee))")
             }
-            Text("\(settlement.amount) €")
-                .font(.footnote)
-                .foregroundStyle(.secondary)
         }
+        .accessibilityElement(children: .combine)
         .contentShape(Rectangle())
         .onTapGesture {
             selectedSettlement = settlement
