@@ -24,3 +24,7 @@ docker compose up -d
 # Arresta e rimuove i container
 docker compose down
 ```
+
+## Documentazione
+
+La documentazione del progetto è disponibile nel formato PDF nella cartella `docs/out`.
